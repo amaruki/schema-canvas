@@ -12,6 +12,15 @@ interface DjangoField {
     field: string;
     onDelete?: string;
   };
+  oneToOneField?: {
+    model: string;
+    field: string;
+    onDelete?: string;
+  };
+  manyToManyField?: {
+    model: string;
+    through?: string; // Intermediate model for M2M
+  };
   description?: string;
 }
 
@@ -25,11 +34,18 @@ interface DjangoModel {
 export function parseDjangoModels(content: string): Schema {
   const models: DjangoModel[] = [];
 
-  // Remove comments and clean up the content
+  // Remove comments and clean up the content while preserving structure
   const cleanContent = content
     .split('\n')
-    .map(line => line.split('#')[0].trim()) // Remove comments
-    .filter(line => line.length > 0)
+    .map(line => {
+      // Remove comments but preserve the line structure and indentation
+      const commentIndex = line.indexOf('#');
+      if (commentIndex !== -1) {
+        return line.substring(0, commentIndex).trimEnd();
+      }
+      return line;
+    })
+    .filter(line => line.trim().length > 0)
     .join('\n');
 
   // Find all class definitions
@@ -69,6 +85,21 @@ export function parseDjangoModels(content: string): Schema {
     // Parse fields
     parseFields(classContent, model);
 
+    // Add automatic id field if no primary key exists (Django default behavior)
+    const hasPrimaryKey = model.fields.some(field => field.primaryKey);
+    if (!hasPrimaryKey) {
+      const idField: DjangoField = {
+        name: 'id',
+        type: 'integer',
+        nullable: false,
+        primaryKey: true,
+        unique: true,
+        description: 'Auto-generated primary key (Django default)'
+      };
+      // Add id field as the first column
+      model.fields.unshift(idField);
+    }
+
     // Add documentation if present
     const docstringMatch = classContent.match(/class\s+Meta.*?"""([\s\S]*?)"""/);
     if (docstringMatch) {
@@ -87,61 +118,57 @@ export function parseDjangoModels(content: string): Schema {
 
 function findClassEnd(content: string, startIndex: number): number {
   let i = startIndex;
-  let braceCount = 0;
-  let inClass = true;
 
-  // Skip initial whitespace
-  while (i < content.length && /\s/.test(content[i])) {
+  // Find the start of the current line (class definition line)
+  while (i > 0 && content[i - 1] !== '\n') {
+    i--;
+  }
+  const classLineStart = i;
+
+  // Get the class definition line to determine base indentation
+  while (i < content.length && content[i] !== '\n') {
     i++;
   }
+  const classLineEnd = i;
+  const classLine = content.substring(classLineStart, classLineEnd);
 
-  // Find the base indentation level (class definition line)
-  let baseIndent = startIndex;
-  while (baseIndent > 0 && content[baseIndent - 1] !== '\n') {
-    baseIndent--;
-  }
-  while (baseIndent < i && /\s/.test(content[baseIndent])) {
-    baseIndent++;
-  }
+  // Calculate base indentation (number of leading spaces/tabs)
+  const baseIndent = classLine.search(/\S/);
 
-  while (i < content.length && inClass) {
+  // Move to the next line
+  i++;
+
+  while (i < content.length) {
     const lineStart = i;
 
     // Find the end of the current line
     while (i < content.length && content[i] !== '\n') {
       i++;
     }
-
-    const line = content.substring(lineStart, i).trim();
+    const lineEnd = i;
+    const line = content.substring(lineStart, lineEnd);
 
     // Skip empty lines
-    if (line === '') {
+    if (line.trim() === '') {
       i++;
       continue;
     }
 
-    // Count indentation for this line
-    let lineIndent = lineStart;
-    while (lineIndent < content.length && /\s/.test(content[lineIndent])) {
-      lineIndent++;
-    }
+    // Calculate current line indentation
+    const currentIndent = line.search(/\S/);
 
     // If we find another class or function definition at same or lower indentation
-    if (line.startsWith('class ') || line.startsWith('def ')) {
-      if (lineIndent <= baseIndent) {
-        // We've found the start of the next class/function
-        return lineStart;
-      }
+    const trimmedLine = line.trim();
+    if ((trimmedLine.startsWith('class ') || trimmedLine.startsWith('def ')) && currentIndent <= baseIndent) {
+      // We've found the start of the next class/function
+      return lineStart;
     }
 
-    // If we're at the end of the file
-    if (i >= content.length) {
-      return content.length;
-    }
-
-    i++; // Skip the newline
+    // Move to next line
+    i++;
   }
 
+  // If we've reached the end of the content
   return content.length;
 }
 
@@ -181,8 +208,8 @@ function parseFields(classContent: string, model: DjangoModel): void {
         unique: false,
       };
 
-      // Parse field arguments
-      parseFieldArguments(fieldArgs, field);
+      // Parse field arguments - pass field type for relationship parsing
+      parseFieldArguments(fieldArgs, field, fieldType);
 
       // Handle special cases
       if (fieldType === 'AutoField' || fieldType === 'BigAutoField') {
@@ -191,10 +218,17 @@ function parseFields(classContent: string, model: DjangoModel): void {
         field.type = 'integer';
       }
 
-      if (fieldName === 'id' && !model.fields.some(f => f.primaryKey)) {
-        field.primaryKey = true;
-        field.nullable = false;
+      // Special handling for relationship fields - set type after parsing arguments
+      if (fieldType === 'ForeignKey' && field.foreignKey) {
+        field.type = 'integer'; // Foreign keys are typically integers
+      } else if (fieldType === 'OneToOneField' && field.oneToOneField) {
+        field.type = 'integer'; // OneToOneField is also typically an integer
+      } else if (fieldType === 'ManyToManyField' && field.manyToManyField) {
+        field.type = 'json'; // Simplified representation for M2M
       }
+
+      // Note: Automatic id field creation is now handled at the model level
+      // after all fields are parsed
 
       model.fields.push(field);
     } else {
@@ -227,7 +261,7 @@ function parseFields(classContent: string, model: DjangoModel): void {
             unique: false,
           };
 
-          parseFieldArguments(fieldArgs, field);
+          parseFieldArguments(fieldArgs, field, fieldType);
 
           if (fieldType === 'AutoField' || fieldType === 'BigAutoField') {
             field.primaryKey = true;
@@ -235,10 +269,17 @@ function parseFields(classContent: string, model: DjangoModel): void {
             field.type = 'integer';
           }
 
-          if (fieldName === 'id' && !model.fields.some(f => f.primaryKey)) {
-            field.primaryKey = true;
-            field.nullable = false;
+          // Special handling for relationship fields - set type after parsing arguments
+          if (fieldType === 'ForeignKey' && field.foreignKey) {
+            field.type = 'integer'; // Foreign keys are typically integers
+          } else if (fieldType === 'OneToOneField' && field.oneToOneField) {
+            field.type = 'integer'; // OneToOneField is also typically an integer
+          } else if (fieldType === 'ManyToManyField' && field.manyToManyField) {
+            field.type = 'json'; // Simplified representation for M2M
           }
+
+          // Note: Automatic id field creation is now handled at the model level
+          // after all fields are parsed
 
           model.fields.push(field);
 
@@ -250,7 +291,7 @@ function parseFields(classContent: string, model: DjangoModel): void {
 
 }
 
-function parseFieldArguments(args: string, field: DjangoField): void {
+function parseFieldArguments(args: string, field: DjangoField, fieldType?: string): void {
 
   // Clean up the arguments and normalize them
   const cleanArgs = args.replace(/\s+/g, ' ').trim();
@@ -281,26 +322,69 @@ function parseFieldArguments(args: string, field: DjangoField): void {
     field.defaultValue = defaultValue;
   }
 
-  // Parse foreign key - improved regex
-  const fkMatch = cleanArgs.match(/ForeignKey\s*\(\s*['"`]([^'"`]+)['"`]/);
-  if (fkMatch) {
-    const relatedModel = fkMatch[1];
+  // Parse relationship fields based on field type
+  if (fieldType === 'ForeignKey') {
+    // For ForeignKey, the first argument is the related model
+    const modelMatch = cleanArgs.match(/^['"`]?([^'"\s,\)]+)['"`]?/);
+    if (modelMatch) {
+      const relatedModel = modelMatch[1];
 
-    field.foreignKey = {
-      model: relatedModel,
-      field: 'id', // Default to id field
-    };
+      field.foreignKey = {
+        model: relatedModel,
+        field: 'id', // Default to id field
+      };
 
+      // Parse on_delete
+      const onDeleteMatch = cleanArgs.match(/on_delete\s*=\s*models\.(\w+)/);
+      if (onDeleteMatch) {
+        field.foreignKey.onDelete = onDeleteMatch[1];
+      }
 
-    // Parse on_delete
-    const onDeleteMatch = cleanArgs.match(/on_delete\s*=\s*models\.(\w+)/);
-    if (onDeleteMatch) {
-      field.foreignKey.onDelete = onDeleteMatch[1];
+      // Foreign keys are usually not nullable unless explicitly set
+      if (!cleanArgs.includes('null=True') && !cleanArgs.includes('blank=True')) {
+        field.nullable = false;
+      }
     }
+  } else if (fieldType === 'OneToOneField') {
+    // For OneToOneField, the first argument is the related model
+    const modelMatch = cleanArgs.match(/^['"`]?([^'"\s,\)]+)['"`]?/);
+    if (modelMatch) {
+      const relatedModel = modelMatch[1];
 
-    // Foreign keys are usually not nullable unless explicitly set
-    if (!cleanArgs.includes('null=True') && !cleanArgs.includes('blank=True')) {
-      field.nullable = false;
+      field.oneToOneField = {
+        model: relatedModel,
+        field: 'id', // Default to id field
+      };
+
+      // Parse on_delete
+      const onDeleteMatch = cleanArgs.match(/on_delete\s*=\s*models\.(\w+)/);
+      if (onDeleteMatch) {
+        field.oneToOneField.onDelete = onDeleteMatch[1];
+      }
+
+      // OneToOneField are usually not nullable unless explicitly set
+      if (!cleanArgs.includes('null=True') && !cleanArgs.includes('blank=True')) {
+        field.nullable = false;
+      }
+    }
+  } else if (fieldType === 'ManyToManyField') {
+    // For ManyToManyField, the first argument is the related model
+    const modelMatch = cleanArgs.match(/^['"`]?([^'"\s,\)]+)['"`]?/);
+    if (modelMatch) {
+      const relatedModel = modelMatch[1];
+
+      field.manyToManyField = {
+        model: relatedModel,
+      };
+
+      // Parse through model for intermediate table
+      const throughMatch = cleanArgs.match(/through\s*=\s*['"`]([^'"`]+)['"`]/);
+      if (throughMatch) {
+        field.manyToManyField.through = throughMatch[1];
+      }
+
+      // ManyToManyField doesn't affect nullability in the same way
+      field.type = 'json'; // Simplified representation for M2M
     }
   }
 
@@ -364,8 +448,13 @@ function convertDjangoToSchema(models: DjangoModel[]): Schema {
 
   // Create a model lookup for easier reference
   const modelLookup: Record<string, DjangoModel> = {};
+  const tableToModelLookup: Record<string, DjangoModel> = {};
+  
   models.forEach(model => {
     modelLookup[model.name] = model;
+    // Also create a mapping from table name to model
+    const tableName = model.tableName || snakeCase(model.name);
+    tableToModelLookup[tableName] = model;
   });
 
   // Generate a unique ID for this import session
@@ -390,7 +479,12 @@ function convertDjangoToSchema(models: DjangoModel[]): Schema {
         columnId: '', // Will be filled in second pass
         onDelete: mapDjangoOnDelete(field.foreignKey.onDelete) || 'CASCADE',
         onUpdate: 'CASCADE',
-      } : undefined,
+      } : (field.oneToOneField ? {
+        tableId: '', // Will be filled in second pass
+        columnId: '', // Will be filled in second pass
+        onDelete: mapDjangoOnDelete(field.oneToOneField.onDelete) || 'CASCADE',
+        onUpdate: 'CASCADE',
+      } : undefined),
     }));
 
     tables.push({
@@ -411,58 +505,105 @@ function convertDjangoToSchema(models: DjangoModel[]): Schema {
       if (column.foreignKey && column.foreignKey.tableId === '') {
 
         // Find the Django model that corresponds to this table
-        const modelName = pascalCase(table.name);
-        const djangoModel = modelLookup[modelName];
+        // First try direct table name lookup (handles custom db_table names)
+        let djangoModel = tableToModelLookup[table.name];
+        let modelName = '';
+        
+        if (!djangoModel) {
+          // Fallback to pascal case conversion (for tables without custom names)
+          modelName = pascalCase(table.name);
+          djangoModel = modelLookup[modelName];
+        } else {
+          modelName = djangoModel.name;
+        }
 
         if (djangoModel) {
-          // Find the field that has this foreign key
+          // Find the field that has this relationship
           const djangoField = djangoModel.fields.find(f => f.name === column.name);
-          if (djangoField && djangoField.foreignKey) {
-            const relatedModelName = djangoField.foreignKey.model;
-            const relatedDjangoModel = modelLookup[relatedModelName];
+
+          if (djangoField && (djangoField.foreignKey || djangoField.oneToOneField)) {
+            const relationship = djangoField.foreignKey || djangoField.oneToOneField;
+            if (relationship) {
+              const relatedModelName = relationship.model;
+              const relatedDjangoModel = modelLookup[relatedModelName];
 
             if (relatedDjangoModel) {
-              const targetTableName = relatedDjangoModel.tableName || snakeCase(relatedModelName);
-              const targetTable = tables.find(t => t.name === targetTableName);
+                const targetTableName = relatedDjangoModel.tableName || snakeCase(relatedModelName);
+                const targetTable = tables.find(t => t.name === targetTableName);
 
-              if (targetTable) {
+                if (targetTable) {
 
-                // Find the target column (usually 'id' or primary key)
-                const targetColumn = targetTable.columns.find(c => c.primaryKey) ||
-                                   targetTable.columns.find(c => c.name === 'id') ||
-                                   targetTable.columns[0];
+                  // Find the target column (usually 'id' or primary key)
+                  const targetColumn = targetTable.columns.find(c => c.primaryKey) ||
+                                     targetTable.columns.find(c => c.name === 'id') ||
+                                     targetTable.columns[0];
 
-                if (targetColumn) {
+                  if (targetColumn) {
 
-                  // Update the foreign key reference
-                  column.foreignKey.tableId = targetTable.id;
-                  column.foreignKey.columnId = targetColumn.id;
+                    // Update the foreign key reference
+                    if (column.foreignKey) {
+                      column.foreignKey.tableId = targetTable.id;
+                      column.foreignKey.columnId = targetColumn.id;
+                    }
 
-                  // Create relationship
-                  const relationship: Relationship = {
-                    id: `rel_${table.id}_${column.name}_${targetTable.id}_${targetColumn.name}`,
-                    sourceTableId: table.id,
-                    sourceColumnId: column.id,
-                    targetTableId: targetTable.id,
-                    targetColumnId: targetColumn.id,
-                    type: 'one-to-many' as RelationshipType, // Django ForeignKey creates one-to-many relationship
-                    onDelete: column.foreignKey.onDelete as any,
-                    onUpdate: 'CASCADE',
-                  };
+                    // Create relationship - determine type based on Django field type
+                    const isOneToOne = djangoField.oneToOneField !== undefined;
+                    const relationshipType = isOneToOne ? 'one-to-one' as RelationshipType : 'many-to-one' as RelationshipType;
 
-                  relationships.push(relationship);
-                } else {
+                    const relationship: Relationship = {
+                      id: `rel_${table.id}_${column.name}_${targetTable.id}_${targetColumn.name}`,
+                      sourceTableId: table.id,
+                      sourceColumnId: column.id,
+                      targetTableId: targetTable.id,
+                      targetColumnId: targetColumn.id,
+                      type: relationshipType,
+                      onDelete: (column.foreignKey?.onDelete || djangoField.oneToOneField?.onDelete) as any,
+                      onUpdate: 'CASCADE',
+                    };
+
+                    relationships.push(relationship);
+                  }
                 }
-              } else {
               }
-            } else {
             }
-          } else {
           }
-        } else {
         }
       }
     });
+  });
+
+  // Third pass: handle ManyToManyField relationships
+  tables.forEach(table => {
+    const djangoModel = tableToModelLookup[table.name];
+    if (djangoModel) {
+      djangoModel.fields.forEach(djangoField => {
+        if (djangoField.manyToManyField) {
+          const relatedModelName = djangoField.manyToManyField.model;
+          const relatedDjangoModel = modelLookup[relatedModelName];
+
+          if (relatedDjangoModel) {
+            const targetTableName = relatedDjangoModel.tableName || snakeCase(relatedModelName);
+            const targetTable = tables.find(t => t.name === targetTableName);
+
+            if (targetTable) {
+              // For M2M, we create a relationship without a specific column
+              // In a real implementation, this might need a junction table
+              const relationship: Relationship = {
+                id: `m2m_${table.id}_${targetTable.id}_${djangoField.name}`,
+                sourceTableId: table.id,
+                sourceColumnId: '', // M2M doesn't have a specific source column
+                targetTableId: targetTable.id,
+                targetColumnId: '', // M2M doesn't have a specific target column
+                type: 'many-to-many' as RelationshipType,
+                name: djangoField.name, // Use the field name as relationship name
+              };
+
+              relationships.push(relationship);
+            }
+          }
+        }
+      });
+    }
   });
 
   return {

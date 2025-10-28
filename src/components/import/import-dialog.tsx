@@ -126,31 +126,46 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({ isOpen, onClose }) =
   };
 
   const exampleDjangoCode = `from django.db import models
-from django.utils import timezone
 
 class User(models.Model):
-    """User account information"""
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)
-    first_name = models.CharField(max_length=30, blank=True)
-    last_name = models.CharField(max_length=30, blank=True)
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         db_table = 'auth_user'
 
+class Profile(models.Model):
+    bio = models.TextField()
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    avatar = models.ImageField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'user_profiles'
+
 class Post(models.Model):
-    """Blog post"""
     title = models.CharField(max_length=200)
     content = models.TextField()
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     published = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'blog_posts'`;
+        db_table = 'blog_posts'
+
+class Tag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    class Meta:
+        db_table = 'tags'
+
+class PostWithM2M(models.Model):
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    tags = models.ManyToManyField(Tag)
+
+    class Meta:
+        db_table = 'posts_with_m2m'`;
 
   const importFormats = [
     {
