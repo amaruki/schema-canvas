@@ -1,4 +1,4 @@
-import { Schema, Table, Column, Relationship } from '@/types/schema';
+import { Schema } from '@/types/schema';
 
 function mapPrismaType(type: string): string {
   const typeMap: Record<string, string> = {
@@ -26,7 +26,7 @@ function mapPrismaType(type: string): string {
 
 function formatPrismaFieldName(name: string): string {
   // Convert snake_case to camelCase
-  return name.replace(/_([a-z])/g, (match, letter) => letter.toUpperCase());
+  return name.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 }
 
 function formatPrismaModelName(name: string): string {
@@ -144,10 +144,10 @@ export function exportToPrisma(schema: Schema): string {
 
         // Add cascade options if specified
         const relationOptions: string[] = [];
-        if (column.foreignKey.onDelete && column.foreignKey.onDelete !== 'NO ACTION') {
+        if (column.foreignKey?.onDelete && column.foreignKey.onDelete !== 'NO ACTION') {
           relationOptions.push(`onDelete: ${column.foreignKey.onDelete}`);
         }
-        if (column.foreignKey.onUpdate && column.foreignKey.onUpdate !== 'NO ACTION') {
+        if (column.foreignKey?.onUpdate && column.foreignKey.onUpdate !== 'NO ACTION') {
           relationOptions.push(`onUpdate: ${column.foreignKey.onUpdate}`);
         }
 
@@ -184,7 +184,7 @@ export function exportToPrisma(schema: Schema): string {
           const existingForeignKey = sourceColumn.foreignKey?.tableId === table.id;
 
           if (!existingForeignKey) {
-            lines.push(`  ${reverseFieldName} ${sourceModelName}[] @relation("${relationship.name || sourceModelName + targetModelName}", fields: [${targetFieldName}], references: [${sourceFieldName}]`);
+            lines.push(`  ${reverseFieldName} ${sourceModelName}[] @relation("${relationship.name || sourceModelName + modelName}", fields: [${targetFieldName}], references: [${sourceFieldName}]`);
 
             // Add cascade options if specified
             const relationOptions: string[] = [];
