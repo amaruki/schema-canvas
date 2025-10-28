@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from "sonner"
 import { useSchema } from '@/hooks/use-schema';
 import { parseDjangoModels, validateDjangoModels } from '@/lib/import/django-importer';
-import { Upload, X, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { LayoutOptions } from '@/lib/layout/auto-layout';
+import { Upload, X, FileText, AlertCircle, CheckCircle, Settings, ChevronDown } from 'lucide-react';
 
 interface ImportDialogProps {
   isOpen: boolean;
@@ -19,6 +20,8 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({ isOpen, onClose }) =
   const [isDragging, setIsDragging] = useState(false);
   const [validation, setValidation] = useState<{ valid: boolean; errors: string[] } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [showLayoutOptions, setShowLayoutOptions] = useState(false);
+  const [layoutAlgorithm, setLayoutAlgorithm] = useState<LayoutOptions['algorithm']>('force-directed');
 
   const loadSchema = useSchema((state) => state.loadSchema);
   const clearSchema = useSchema((state) => state.clearSchema);
@@ -97,7 +100,7 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({ isOpen, onClose }) =
       let schema;
 
       if (selectedFormat === 'django') {
-        schema = parseDjangoModels(fileContent);
+        schema = parseDjangoModels(fileContent, { algorithm: layoutAlgorithm });
       } else {
         // JSON import
         const data = JSON.parse(fileContent);
@@ -228,6 +231,48 @@ class PostWithM2M(models.Model):
               })}
             </div>
           </div>
+
+          {/* Layout Options for Django Import */}
+          {selectedFormat === 'django' && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium">Layout Options</label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowLayoutOptions(!showLayoutOptions)}
+                  className="text-muted-foreground"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  {showLayoutOptions ? 'Hide' : 'Show'}
+                </Button>
+              </div>
+
+              {showLayoutOptions && (
+                <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Layout Algorithm</label>
+                    <select
+                      value={layoutAlgorithm}
+                      onChange={(e) => setLayoutAlgorithm(e.target.value as LayoutOptions['algorithm'])}
+                      className="w-full p-2 border rounded-md bg-background text-sm"
+                    >
+                      <option value="force-directed">Force-Directed (Recommended)</option>
+                      <option value="hierarchical">Hierarchical</option>
+                      <option value="circular">Circular</option>
+                      <option value="grid">Grid</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {layoutAlgorithm === 'force-directed' && 'Automatically arranges tables with related tables closer together'}
+                      {layoutAlgorithm === 'hierarchical' && 'Arranges tables in levels based on relationships'}
+                      {layoutAlgorithm === 'circular' && 'Places tables in a circle formation'}
+                      {layoutAlgorithm === 'grid' && 'Arranges tables in a regular grid pattern'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* File Upload */}
           <div>

@@ -1,4 +1,5 @@
 import { Schema, Table, Column, Relationship, ColumnType, RelationshipType } from '@/types/schema';
+import { AutoLayout, LayoutOptions } from '@/lib/layout/auto-layout';
 
 interface DjangoField {
   name: string;
@@ -31,7 +32,7 @@ interface DjangoModel {
   description?: string;
 }
 
-export function parseDjangoModels(content: string): Schema {
+export function parseDjangoModels(content: string, layoutOptions?: Partial<LayoutOptions>): Schema {
   const models: DjangoModel[] = [];
 
   // Remove comments and clean up the content while preserving structure
@@ -112,6 +113,17 @@ export function parseDjangoModels(content: string): Schema {
 
   // Convert Django models to Schema format
   const schema = convertDjangoToSchema(models);
+
+  // Apply auto-layout to improve table positioning
+  const recommendedAlgorithm = AutoLayout.recommendLayout(schema.tables, schema.relationships);
+  const defaultOptions: Partial<LayoutOptions> = {
+    algorithm: recommendedAlgorithm,
+    spacing: { x: 350, y: 280 },
+    centerOffset: { x: 400, y: 300 },
+  };
+
+  const finalOptions = { ...defaultOptions, ...layoutOptions };
+  schema.tables = AutoLayout.layoutTables(schema.tables, schema.relationships, finalOptions);
 
   return schema;
 }
@@ -462,7 +474,7 @@ function convertDjangoToSchema(models: DjangoModel[]): Schema {
   let columnCounter = 0;
 
   // First pass: create tables
-  models.forEach((model, index) => {
+  models.forEach((model) => {
     const tableName = model.tableName || snakeCase(model.name);
 
     const columns: Column[] = model.fields.map((field, fieldIndex) => ({
@@ -490,10 +502,7 @@ function convertDjangoToSchema(models: DjangoModel[]): Schema {
     tables.push({
       id: tableName,
       name: tableName,
-      position: {
-        x: 100 + (index % 3) * 300, // Better positioning
-        y: 100 + Math.floor(index / 3) * 250
-      },
+      position: { x: 0, y: 0 }, // Will be set by auto-layout
       columns,
       description: model.description,
     });
