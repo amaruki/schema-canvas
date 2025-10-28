@@ -23,7 +23,6 @@ interface DjangoModel {
 }
 
 export function parseDjangoModels(content: string): Schema {
-  console.log('🔍 Starting Django model import...');
   const models: DjangoModel[] = [];
 
   // Remove comments and clean up the content
@@ -33,8 +32,6 @@ export function parseDjangoModels(content: string): Schema {
     .filter(line => line.length > 0)
     .join('\n');
 
-  console.log('📝 Cleaned content length:', cleanContent.length);
-
   // Find all class definitions
   const classRegex = /class\s+(\w+)\s*\((.*?)\):/g;
   let match;
@@ -43,11 +40,8 @@ export function parseDjangoModels(content: string): Schema {
     const className = match[1];
     const inheritance = match[2];
 
-    console.log(`🏗️  Found class: ${className}, inheritance: ${inheritance}`);
-
     // Skip if not a models.Model
     if (!inheritance.includes('models.Model')) {
-      console.log(`⏭️  Skipping ${className} - not a models.Model`);
       continue;
     }
 
@@ -61,8 +55,6 @@ export function parseDjangoModels(content: string): Schema {
     const classEnd = findClassEnd(cleanContent, classStart);
     const classContent = cleanContent.substring(classStart, classEnd);
 
-    console.log(`📋 Class start: ${classStart}, end: ${classEnd}, length: ${classContent.length}`);
-    console.log(`📋 Extracted class content for ${className}:`, classContent.substring(0, 300) + '...');
 
     // Parse Meta class
     const metaMatch = classContent.match(/class\s+Meta\s*:([\s\S]*?)(?=class|\Z)/);
@@ -71,29 +63,24 @@ export function parseDjangoModels(content: string): Schema {
       const dbTableMatch = metaContent.match(/db_table\s*=\s*['"`]([^'"`]+)['"`]/);
       if (dbTableMatch) {
         model.tableName = dbTableMatch[1];
-        console.log(`📊 Found custom table name for ${className}: ${model.tableName}`);
       }
     }
 
     // Parse fields
     parseFields(classContent, model);
-    console.log(`🔧 Parsed ${model.fields.length} fields for ${className}:`, model.fields.map(f => f.name));
 
     // Add documentation if present
     const docstringMatch = classContent.match(/class\s+Meta.*?"""([\s\S]*?)"""/);
     if (docstringMatch) {
       model.description = docstringMatch[1].trim();
-      console.log(`📄 Found description for ${className}: ${model.description}`);
     }
 
     models.push(model);
   }
 
-  console.log(`🎯 Total models parsed: ${models.length}`);
 
   // Convert Django models to Schema format
   const schema = convertDjangoToSchema(models);
-  console.log(`✅ Final schema: ${schema.tables.length} tables, ${schema.relationships.length} relationships`);
 
   return schema;
 }
@@ -159,7 +146,6 @@ function findClassEnd(content: string, startIndex: number): number {
 }
 
 function parseFields(classContent: string, model: DjangoModel): void {
-  console.log('🔍 Parsing fields from content:', classContent.substring(0, 200) + '...');
 
   // Find lines that contain field definitions
   const lines = classContent.split('\n');
@@ -172,7 +158,6 @@ function parseFields(classContent: string, model: DjangoModel): void {
       continue;
     }
 
-    console.log('🔎 Processing line:', line);
 
     // Match field definition: field_name = models.FieldType(...)
     const fieldMatch = line.match(/^(\w+)\s*=\s*models\.(\w+)(?:\((.*)\))?/);
@@ -182,7 +167,6 @@ function parseFields(classContent: string, model: DjangoModel): void {
       const fieldType = fieldMatch[2];
       const fieldArgs = fieldMatch[3] || '';
 
-      console.log(`✅ Found field: ${fieldName} of type ${fieldType} with args: ${fieldArgs}`);
 
       // Skip Meta class fields
       if (fieldName === 'Meta' || fieldType === 'Meta') {
@@ -213,7 +197,6 @@ function parseFields(classContent: string, model: DjangoModel): void {
       }
 
       model.fields.push(field);
-      console.log(`📝 Added field: ${fieldName} (type: ${field.type}, nullable: ${field.nullable}, pk: ${field.primaryKey})`);
     } else {
       // Try multiline field parsing
       if (line.includes('models.') && line.includes('(')) {
@@ -228,7 +211,6 @@ function parseFields(classContent: string, model: DjangoModel): void {
           j++;
         }
 
-        console.log('🔗 Multiline field definition:', fullFieldDef);
 
         const multiFieldMatch = fullFieldDef.match(/^(\w+)\s*=\s*models\.(\w+)\s*\((.*)\)/);
         if (multiFieldMatch) {
@@ -236,7 +218,6 @@ function parseFields(classContent: string, model: DjangoModel): void {
           const fieldType = multiFieldMatch[2];
           const fieldArgs = multiFieldMatch[3] || '';
 
-          console.log(`✅ Found multiline field: ${fieldName} of type ${fieldType}`);
 
           const field: DjangoField = {
             name: fieldName,
@@ -260,7 +241,6 @@ function parseFields(classContent: string, model: DjangoModel): void {
           }
 
           model.fields.push(field);
-          console.log(`📝 Added multiline field: ${fieldName} (type: ${field.type}, nullable: ${field.nullable}, pk: ${field.primaryKey})`);
 
           i = j - 1; // Skip the lines we just processed
         }
@@ -268,11 +248,9 @@ function parseFields(classContent: string, model: DjangoModel): void {
     }
   }
 
-  console.log(`🏁 Finished parsing fields. Total fields: ${model.fields.length}`);
 }
 
 function parseFieldArguments(args: string, field: DjangoField): void {
-  console.log(`🔧 Parsing field arguments: "${args}"`);
 
   // Clean up the arguments and normalize them
   const cleanArgs = args.replace(/\s+/g, ' ').trim();
@@ -280,22 +258,18 @@ function parseFieldArguments(args: string, field: DjangoField): void {
   // Parse null constraint
   if (cleanArgs.includes('null=True')) {
     field.nullable = true;
-    console.log('✅ Found null=True');
   } else if (cleanArgs.includes('null=False')) {
     field.nullable = false;
-    console.log('✅ Found null=False');
   }
 
   // Parse blank constraint
   if (cleanArgs.includes('blank=True')) {
     field.nullable = true;
-    console.log('✅ Found blank=True');
   }
 
   // Parse unique constraint
   if (cleanArgs.includes('unique=True')) {
     field.unique = true;
-    console.log('✅ Found unique=True');
   }
 
   // Parse default value - more robust regex
@@ -305,7 +279,6 @@ function parseFieldArguments(args: string, field: DjangoField): void {
     // Remove quotes but keep content
     defaultValue = defaultValue.replace(/^['"`]|['"`]$/g, '');
     field.defaultValue = defaultValue;
-    console.log(`✅ Found default value: ${defaultValue}`);
   }
 
   // Parse foreign key - improved regex
@@ -318,19 +291,16 @@ function parseFieldArguments(args: string, field: DjangoField): void {
       field: 'id', // Default to id field
     };
 
-    console.log(`✅ Found foreign key to: ${relatedModel}`);
 
     // Parse on_delete
     const onDeleteMatch = cleanArgs.match(/on_delete\s*=\s*models\.(\w+)/);
     if (onDeleteMatch) {
       field.foreignKey.onDelete = onDeleteMatch[1];
-      console.log(`✅ Found on_delete: ${onDeleteMatch[1]}`);
     }
 
     // Foreign keys are usually not nullable unless explicitly set
     if (!cleanArgs.includes('null=True') && !cleanArgs.includes('blank=True')) {
       field.nullable = false;
-      console.log('✅ Foreign key is not nullable');
     }
   }
 
@@ -339,14 +309,12 @@ function parseFieldArguments(args: string, field: DjangoField): void {
   if (maxLengthMatch) {
     // Use specific length if available
     field.type = 'string';
-    console.log(`✅ Found max_length: ${maxLengthMatch[1]}`);
   }
 
   // Handle special field types
   if (cleanArgs.includes('primary_key=True')) {
     field.primaryKey = true;
     field.nullable = false;
-    console.log('✅ Found primary_key=True');
   }
 
   // Handle AutoField special case
@@ -354,10 +322,8 @@ function parseFieldArguments(args: string, field: DjangoField): void {
     field.primaryKey = true;
     field.nullable = false;
     field.type = 'integer';
-    console.log('✅ Found AutoField');
   }
 
-  console.log(`🔧 Field result - nullable: ${field.nullable}, unique: ${field.unique}, pk: ${field.primaryKey}, fk: ${field.foreignKey ? field.foreignKey.model : 'none'}`);
 }
 
 function mapDjangoType(djangoType: string): ColumnType {
@@ -440,35 +406,26 @@ function convertDjangoToSchema(models: DjangoModel[]): Schema {
   });
 
   // Second pass: create relationships and fix foreign key references
-  console.log('🔗 Starting relationship creation...');
   tables.forEach(table => {
-    console.log(`📋 Processing table: ${table.name} with ${table.columns.length} columns`);
     table.columns.forEach(column => {
       if (column.foreignKey && column.foreignKey.tableId === '') {
-        console.log(`🔎 Found foreign key column: ${column.name} in table ${table.name}`);
 
         // Find the Django model that corresponds to this table
         const modelName = pascalCase(table.name);
-        console.log(`🏷️  Looking for Django model: ${modelName}`);
         const djangoModel = modelLookup[modelName];
 
         if (djangoModel) {
-          console.log(`✅ Found Django model: ${djangoModel.name}`);
           // Find the field that has this foreign key
           const djangoField = djangoModel.fields.find(f => f.name === column.name);
           if (djangoField && djangoField.foreignKey) {
-            console.log(`🔗 Found Django field with foreign key: ${djangoField.name} -> ${djangoField.foreignKey.model}`);
             const relatedModelName = djangoField.foreignKey.model;
             const relatedDjangoModel = modelLookup[relatedModelName];
 
             if (relatedDjangoModel) {
-              console.log(`✅ Found related Django model: ${relatedDjangoModel.name}`);
               const targetTableName = relatedDjangoModel.tableName || snakeCase(relatedModelName);
-              console.log(`🎯 Target table name: ${targetTableName}`);
               const targetTable = tables.find(t => t.name === targetTableName);
 
               if (targetTable) {
-                console.log(`✅ Found target table: ${targetTable.name} with ${targetTable.columns.length} columns`);
 
                 // Find the target column (usually 'id' or primary key)
                 const targetColumn = targetTable.columns.find(c => c.primaryKey) ||
@@ -476,7 +433,6 @@ function convertDjangoToSchema(models: DjangoModel[]): Schema {
                                    targetTable.columns[0];
 
                 if (targetColumn) {
-                  console.log(`🎯 Found target column: ${targetColumn.name} (PK: ${targetColumn.primaryKey})`);
 
                   // Update the foreign key reference
                   column.foreignKey.tableId = targetTable.id;
@@ -495,26 +451,19 @@ function convertDjangoToSchema(models: DjangoModel[]): Schema {
                   };
 
                   relationships.push(relationship);
-                  console.log(`✅ Created relationship: ${table.name}.${column.name} -> ${targetTable.name}.${targetColumn.name}`);
                 } else {
-                  console.log(`❌ No target column found in ${targetTable.name}`);
                 }
               } else {
-                console.log(`❌ Target table not found: ${targetTableName}`);
               }
             } else {
-              console.log(`❌ Related Django model not found: ${relatedModelName}`);
             }
           } else {
-            console.log(`❌ No foreign key field found for ${column.name}`);
           }
         } else {
-          console.log(`❌ Django model not found: ${modelName}`);
         }
       }
     });
   });
-  console.log(`🔗 Created ${relationships.length} relationships total`);
 
   return {
     id: `imported_${Date.now()}`,

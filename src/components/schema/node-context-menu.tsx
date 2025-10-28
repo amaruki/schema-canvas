@@ -92,6 +92,7 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
 
   const handleDelete = () => {
     setIsDeleteDialogOpen(true);
+    console.log("Deleted table with ID:", nodeId);
     onClose();
   };
 

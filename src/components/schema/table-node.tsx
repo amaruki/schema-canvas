@@ -33,8 +33,11 @@ interface TableNodeData extends Node {
 
 const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
   const { selected } = props;
-  const data = props.data as unknown as TableNodeData | undefined;
-  if (!data) return null;
+  const data = props.data as unknown as TableNodeData;
+  if (!data || !data.table) {
+    console.error('TableNode data is undefined or null, or table is missing');
+    return null;
+  }
   const table = data.table;
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(table.name);

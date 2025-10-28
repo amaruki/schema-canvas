@@ -129,11 +129,11 @@ export function exportToPrisma(schema: Schema): string {
     // Add relationships from this table's foreign keys
     const foreignKeyColumns = table.columns.filter(c => c.foreignKey);
     for (const column of foreignKeyColumns) {
-      const targetTable = schema.tables.find(t => t.id === column.foreignKey.tableId);
+      const targetTable = schema.tables.find(t => t.id === column.foreignKey!.tableId);
       if (targetTable) {
         const targetModelName = formatPrismaModelName(targetTable.name);
         const fieldName = formatPrismaFieldName(column.name);
-        const targetFieldName = formatPrismaFieldName(targetTable.columns.find(c => c.id === column.foreignKey.columnId)?.name || 'id');
+        const targetFieldName = formatPrismaFieldName(targetTable.columns.find(c => c.id === column.foreignKey!.columnId)?.name || 'id');
 
         // Add relation field
         if (fieldName !== targetModelName.toLowerCase()) {

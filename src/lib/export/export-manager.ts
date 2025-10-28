@@ -1,7 +1,7 @@
 import { Schema, ExportOptions } from '@/types/schema';
-import { exportToJSON, importFromJSON } from './json-exporter';
-import { exportToSQL, SQLDialect } from './sql-exporter';
-import { exportToPrisma } from './prisma-exporter';
+import { exportToJSON, importFromJSON } from '@/lib/export/json-exporter';
+import { exportToSQL, SQLDialect } from '@/lib/export/sql-exporter';
+import { exportToPrisma } from '@/lib/export/prisma-exporter';
 
 export class ExportManager {
   static export(schema: Schema, options: ExportOptions): string {

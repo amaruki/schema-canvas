@@ -142,7 +142,7 @@ export const EdgeContextMenu: React.FC<EdgeContextMenuProps> = ({
     <>
       <div
         ref={menuRef}
-        className="fixed z-50 min-w-[240px]"
+        className="fixed z-50 min-w-60"
         style={{
           left: `${adjustedX}px`,
           top: `${adjustedY}px`,
