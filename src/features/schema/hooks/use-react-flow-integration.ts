@@ -90,16 +90,53 @@ export const useReactFlowIntegration = (
 
   // Sync React Flow state with computed nodes/edges ONLY when they actually change
   useEffect(() => {
-    // Deep comparison to avoid unnecessary updates
-    const nodesChanged = JSON.stringify(rfNodes) !== JSON.stringify(nodes);
+    // More robust comparison to avoid unnecessary updates
+    const nodesChanged = rfNodes.length !== nodes.length ||
+      rfNodes.some((node, index) => {
+        const computedNode = nodes[index];
+        return !computedNode ||
+          node.id !== computedNode.id ||
+          node.position.x !== computedNode.position.x ||
+          node.position.y !== computedNode.position.y ||
+          JSON.stringify(node.data) !== JSON.stringify(computedNode.data);
+      });
+
     if (nodesChanged) {
       setNodes(nodes);
     }
   }, [nodes]); // Don't include setNodes or rfNodes in deps
 
   useEffect(() => {
-    // Deep comparison to avoid unnecessary updates
-    const edgesChanged = JSON.stringify(rfEdges) !== JSON.stringify(edges);
+    // More robust comparison for edges to ensure relationship type changes are detected
+    const edgesChanged = rfEdges.length !== edges.length ||
+      rfEdges.some((edge, index) => {
+        const computedEdge = edges[index];
+        if (!computedEdge) return true;
+
+        // Check basic edge properties
+        if (edge.id !== computedEdge.id ||
+            edge.source !== computedEdge.source ||
+            edge.target !== computedEdge.target ||
+            edge.sourceHandle !== computedEdge.sourceHandle ||
+            edge.targetHandle !== computedEdge.targetHandle) {
+          return true;
+        }
+
+        // Check relationship data changes, especially the type
+        const currentRelationship = edge.data.relationship;
+        const computedRelationship = computedEdge.data.relationship;
+
+        if (!currentRelationship || !computedRelationship) return true;
+
+        // Most importantly, check if relationship type changed
+        if (currentRelationship.type !== computedRelationship.type) {
+          return true;
+        }
+
+        // Check other relationship properties
+        return JSON.stringify(currentRelationship) !== JSON.stringify(computedRelationship);
+      });
+
     if (edgesChanged) {
       setEdges(edges);
     }

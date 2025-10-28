@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import RelationshipTypeDialog from './relationship-type-dialog';
 import {
   Edit,
   Trash2,
@@ -73,23 +74,6 @@ export const EdgeContextMenu: React.FC<EdgeContextMenuProps> = ({
   const source = getSourceInfo();
   const target = getTargetInfo();
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-
-    if (isVisible) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isVisible, onClose]);
-
   // Close menu on Escape key
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -112,22 +96,22 @@ export const EdgeContextMenu: React.FC<EdgeContextMenuProps> = ({
 
   const handleDelete = () => {
     setIsDeleteDialogOpen(true);
-    onClose();
   };
 
   const confirmDelete = () => {
     onDeleteRelationship(edgeId);
     setIsDeleteDialogOpen(false);
+    onClose();
   };
 
   const handleChangeType = () => {
     setIsTypeSelectorOpen(true);
-    onClose();
   };
 
   const handleSelectType = (newType: RelationshipType) => {
     onUpdateRelationship(edgeId, { type: newType });
     setIsTypeSelectorOpen(false);
+    onClose();
   };
 
   const currentTypeConfig = RELATIONSHIP_TYPES[relationship.type as RelationshipType] || RELATIONSHIP_TYPES['one-to-many'];
@@ -231,103 +215,13 @@ export const EdgeContextMenu: React.FC<EdgeContextMenuProps> = ({
       </AlertDialog>
 
       {/* Relationship Type Selector Dialog */}
-      {isTypeSelectorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md max-h-[85vh] overflow-hidden bg-card rounded-lg shadow-2xl border border-border m-4">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Change Relationship Type</h3>
-                <button
-                  onClick={() => setIsTypeSelectorOpen(false)}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <span className="text-2xl leading-none">×</span>
-                </button>
-              </div>
-
-              <div className="text-sm text-muted-foreground mb-6 p-3 bg-muted/50 rounded-lg">
-                <div className="font-medium mb-1">Current Relationship:</div>
-                <div>
-                  <strong>{source.table}.{source.column}</strong> →{" "}
-                  <strong>{target.table}.{target.column}</strong>
-                </div>
-                <div className="mt-2">
-                  <Badge
-                    variant="secondary"
-                    className="text-xs"
-                    style={{
-                      backgroundColor: `${currentTypeConfig.color}20`,
-                      borderColor: currentTypeConfig.color,
-                      color: currentTypeConfig.color,
-                    }}
-                  >
-                    {currentTypeConfig.label}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                <div className="text-sm font-medium text-muted-foreground mb-3">Select New Type:</div>
-                {Object.entries(RELATIONSHIP_TYPES).map(([type, config]) => {
-                  const isCurrentType = type === relationship.type;
-                  return (
-                    <button
-                      key={type}
-                      onClick={() => handleSelectType(type as RelationshipType)}
-                      className={`
-                        w-full h-auto p-4 rounded-lg border-2 transition-all duration-200
-                        flex items-center gap-3 text-left
-                        ${isCurrentType
-                          ? 'border-primary bg-primary/10 shadow-md'
-                          : 'border-border hover:border-primary/50 hover:bg-accent/50'
-                        }
-                      `}
-                      style={isCurrentType ? {
-                        borderColor: config.color,
-                        backgroundColor: `${config.color}10`,
-                      } : {}}
-                    >
-                      <Badge
-                        variant="secondary"
-                        className="shrink-0 text-xs font-bold"
-                        style={{
-                          backgroundColor: isCurrentType ? config.color : `${config.color}20`,
-                          borderColor: config.color,
-                          color: isCurrentType ? 'white' : config.color,
-                        }}
-                      >
-                        {config.label}
-                      </Badge>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm">
-                          {type.split('-').map(word =>
-                            word.charAt(0).toUpperCase() + word.slice(1)
-                          ).join(' to ')}
-                        </div>
-                        {isCurrentType && (
-                          <div className="text-xs text-primary font-medium mt-1">
-                            ✓ Currently selected
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="pt-4 border-t border-border mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsTypeSelectorOpen(false)}
-                  className="w-full"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <RelationshipTypeDialog
+        isOpen={isTypeSelectorOpen}
+        onClose={() => setIsTypeSelectorOpen(false)}
+        relationship={relationship}
+        onUpdateType={handleSelectType}
+        allTables={allTables}
+      />
     </>
   );
 };
