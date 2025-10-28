@@ -19,7 +19,6 @@ import {
   Edit3,
   Link2,
   Download,
-  Settings,
   Table,
 } from 'lucide-react';
 import { Table as TableType, Relationship } from '@/types/schema';
@@ -56,23 +55,6 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-
-    if (isVisible) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isVisible, onClose]);
-
   // Close menu on Escape key
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -92,13 +74,16 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
 
   const handleDelete = () => {
     setIsDeleteDialogOpen(true);
-    console.log("Deleted table with ID:", nodeId);
-    onClose();
   };
 
   const confirmDelete = () => {
     onDeleteTable(nodeId);
     setIsDeleteDialogOpen(false);
+    onClose();
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
   };
 
   const handleDuplicate = () => {
@@ -117,7 +102,7 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
   };
 
   const handleToggleConnections = () => {
-    onToggleConnections(nodeId);
+    onToggleConnections(nodeId || table.id);
     onClose();
   };
 
@@ -212,7 +197,10 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog 
+        open={isDeleteDialogOpen} 
+        onOpenChange={handleDialogOpenChange}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">Delete Table</AlertDialogTitle>
@@ -226,9 +214,13 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmDelete}
+              onClick={() => {
+                confirmDelete();
+              }}
               className="bg-destructive hover:bg-destructive/90"
             >
               Delete Table

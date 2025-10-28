@@ -77,7 +77,6 @@ export const useTableOperations = () => {
    * Deletes a table and its relationships
    */
   const deleteExistingTable = useCallback((tableId: string) => {
-    
     deleteTable(tableId);
   }, [deleteTable]);
 

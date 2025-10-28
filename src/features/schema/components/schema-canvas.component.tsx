@@ -227,7 +227,6 @@ const SchemaCanvasContent: React.FC = () => {
       if (table) {
         canvasState.selectNode(tableId);
         // TODO: Could trigger edit mode here
-        console.log("Edit table:", table.name);
       }
     },
     [tableOps, canvasState]
