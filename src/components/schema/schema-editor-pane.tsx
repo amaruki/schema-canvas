@@ -118,13 +118,12 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
       <div
         className="w-1 bg-border hover:bg-primary cursor-col-resize shrink-0 transition-colors"
         onMouseDown={handleDividerMouseDown}
+        role="separator"
+        aria-orientation="vertical"
       />
 
       {/* Canvas pane */}
-      <div
-        style={{ flex: 1 }}
-        className="flex flex-col min-h-0 overflow-hidden"
-      >
+      <div style={{ flex: 1 }} className="flex flex-col min-h-0 overflow-hidden">
         {children}
       </div>
     </div>

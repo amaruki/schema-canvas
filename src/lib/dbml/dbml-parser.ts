@@ -15,6 +15,25 @@ export interface ParseResult {
   errors: ParseError[];
 }
 
+// Minimal types for @dbml/core v6 AST (no official TS exports)
+interface DbmlFieldType { type_name: string }
+interface DbmlDefault { value: string | number | boolean | null }
+interface DbmlField {
+  name: string;
+  type: DbmlFieldType;
+  pk: boolean;
+  not_null: boolean | undefined;
+  unique: boolean;
+  dbdefault: DbmlDefault | null;
+}
+interface DbmlTable { name: string; fields: DbmlField[] }
+interface DbmlEndpoint { tableName: string; fieldNames: string[]; relation: string }
+interface DbmlRef { endpoints: [DbmlEndpoint, DbmlEndpoint] }
+interface DbmlSchema { tables: DbmlTable[]; refs: DbmlRef[] }
+interface DbmlDatabase { schemas: DbmlSchema[] }
+interface DbmlDiag { message: string; location?: { start?: { line?: number } } }
+interface DbmlError { diags?: DbmlDiag[]; message?: string }
+
 function mapDbmlType(typeName: string): ColumnType {
   const t = typeName.toLowerCase();
   if (['varchar', 'char', 'nvarchar'].includes(t)) return 'string';
@@ -48,28 +67,26 @@ export function parseDbml(
 ): ParseResult {
   if (!text.trim()) return { tables: [], relationships: [], errors: [] };
 
-  let database: any;
+  let database: DbmlDatabase;
   try {
-    database = new Parser().parse(text, 'dbmlv2');
-  } catch (e: any) {
+    database = new Parser().parse(text, 'dbmlv2') as DbmlDatabase;
+  } catch (e: unknown) {
     // @dbml/core v6 throws { diags: [{ message, location }] } instead of a standard Error
-    const diag = e.diags?.[0];
-    const msg: string = diag?.message ?? e.message ?? String(e);
-    const line: number | undefined = diag?.location?.start?.line ?? e.location?.start?.line;
+    const err = e as DbmlError;
+    const diag = err.diags?.[0];
+    const msg = diag?.message ?? err.message ?? String(e);
+    const line = diag?.location?.start?.line;
     return { tables: [], relationships: [], errors: [{ message: msg, line }] };
   }
 
-  const schema = database.schemas?.[0] ?? database;
-  const dbTables: any[] = schema.tables ?? [];
-  const dbRefs: any[] = schema.refs ?? [];
+  const schema = database.schemas?.[0];
+  if (!schema) return { tables: [], relationships: [], errors: [] };
 
-  const tables: Table[] = dbTables.map((dbTable: any) => {
+  const tables: Table[] = schema.tables.map((dbTable) => {
     const existing = existingTables.find((t) => t.name === dbTable.name);
-    const position =
-      existing?.position ??
-      findOpenSlot(existingNodes, { x: 200, y: 200 });
+    const position = existing?.position ?? findOpenSlot(existingNodes, { x: 200, y: 200 });
 
-    const columns: Column[] = (dbTable.fields ?? []).map((field: any) => {
+    const columns: Column[] = dbTable.fields.map((field) => {
       const colId =
         existing?.columns.find((c) => c.name === field.name)?.id ??
         `col_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -80,8 +97,7 @@ export function parseDbml(
         primaryKey: !!field.pk,
         nullable: !field.not_null && !field.pk,
         unique: !!field.unique,
-        defaultValue:
-          field.dbdefault?.value != null ? String(field.dbdefault.value) : undefined,
+        defaultValue: field.dbdefault?.value != null ? String(field.dbdefault.value) : undefined,
       };
     });
 
@@ -97,23 +113,17 @@ export function parseDbml(
   const colLookup = new Map<string, { tableId: string; columnId: string }>();
   tables.forEach((table) => {
     table.columns.forEach((col) => {
-      colLookup.set(`${table.name}.${col.name}`, {
-        tableId: table.id,
-        columnId: col.id,
-      });
+      colLookup.set(`${table.name}.${col.name}`, { tableId: table.id, columnId: col.id });
     });
   });
 
   const relationships: Relationship[] = [];
-  dbRefs.forEach((ref: any) => {
-    const ep0 = ref.endpoints?.[0];
-    const ep1 = ref.endpoints?.[1];
-    if (!ep0 || !ep1) return;
+  schema.refs.forEach((ref) => {
+    const ep0 = ref.endpoints[0];
+    const ep1 = ref.endpoints[1];
 
-    const srcKey = `${ep0.tableName}.${ep0.fieldNames?.[0]}`;
-    const tgtKey = `${ep1.tableName}.${ep1.fieldNames?.[0]}`;
-    const src = colLookup.get(srcKey);
-    const tgt = colLookup.get(tgtKey);
+    const src = colLookup.get(`${ep0.tableName}.${ep0.fieldNames[0]}`);
+    const tgt = colLookup.get(`${ep1.tableName}.${ep1.fieldNames[0]}`);
     if (!src || !tgt) return;
 
     relationships.push({
