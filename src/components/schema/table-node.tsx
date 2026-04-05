@@ -138,7 +138,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
     <>
       <Card
         className={cn(
-          "min-w-[220px] max-w-[320px] border shadow-sm overflow-visible",
+          "min-w-[220px] max-w-[320px] border shadow-sm overflow-visible py-0 gap-0",
           selected ? "border-primary shadow-md ring-1 ring-primary/30" : "border-border"
         )}
       >
@@ -179,26 +179,20 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
             <div
               key={column.id}
               className={cn(
-                "flex items-center py-1 px-2 text-[11px] group/row relative border-b border-border/50 last:border-b-0 hover:bg-muted/30",
+                "flex items-center py-2 px-2 text-[11px] group/row relative border-b border-border/50 last:border-b-0 hover:bg-muted/30",
                 column.primaryKey && "bg-amber-50/50 dark:bg-amber-950/20",
                 column.foreignKey && !column.primaryKey && "bg-blue-50/30 dark:bg-blue-950/10",
               )}
             >
               {/* Left handle - always present */}
               <Handle
-                type="target"
+                type="source"
                 position={Position.Left}
-                id={`${column.id}-left-target`}
+                id={`${column.id}-left`}
                 className={cn(
                   "w-2! h-2! border-[1.5px]! border-card! -left-1! z-10!",
                   column.primaryKey ? "bg-amber-500!" : column.foreignKey ? "bg-primary!" : "bg-muted-foreground/40!"
                 )}
-              />
-              <Handle
-                type="source"
-                position={Position.Left}
-                id={`${column.id}-left`}
-                className="w-2! h-2! border-[1.5px]! border-card! -left-1! z-10! opacity-0! pointer-events-none!"
               />
 
               {/* Right handle - always present */}
@@ -210,12 +204,6 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
                   "w-2! h-2! border-[1.5px]! border-card! -right-1! z-10!",
                   column.primaryKey ? "bg-amber-500!" : column.foreignKey ? "bg-primary!" : "bg-muted-foreground/40!"
                 )}
-              />
-              <Handle
-                type="target"
-                position={Position.Right}
-                id={`${column.id}-right-target`}
-                className="w-2! h-2! border-[1.5px]! border-card! -right-1! z-10! opacity-0! pointer-events-none!"
               />
 
               <div className="flex items-center gap-1 flex-1 min-w-0 ml-1">

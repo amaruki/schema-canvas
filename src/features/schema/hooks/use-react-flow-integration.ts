@@ -116,9 +116,7 @@ export const useReactFlowIntegration = (
         // Check basic edge properties
         if (edge.id !== computedEdge.id ||
             edge.source !== computedEdge.source ||
-            edge.target !== computedEdge.target ||
-            edge.sourceHandle !== computedEdge.sourceHandle ||
-            edge.targetHandle !== computedEdge.targetHandle) {
+            edge.target !== computedEdge.target) {
           return true;
         }
 
@@ -141,6 +139,50 @@ export const useReactFlowIntegration = (
       setEdges(edges);
     }
   }, [edges]); // Don't include setEdges or rfEdges in deps
+
+  // Dynamically update edge handles based on node positions for auto-adjustment
+  useEffect(() => {
+    setEdges((currentEdges) => {
+      let changed = false;
+      const newEdges = currentEdges.map((edge) => {
+        const sourceNode = rfNodes.find((n) => n.id === edge.source);
+        const targetNode = rfNodes.find((n) => n.id === edge.target);
+
+        if (!sourceNode || !targetNode || !edge.data?.relationship) {
+          return edge;
+        }
+
+        const rel = edge.data.relationship as Relationship;
+        const sBase = rel.sourceColumnId.replace(/-left-target$/, '').replace(/-right-target$/, '').replace(/-left$/, '').replace(/-right$/, '');
+        const tBase = rel.targetColumnId.replace(/-left-target$/, '').replace(/-right-target$/, '').replace(/-left$/, '').replace(/-right$/, '');
+
+        const sourceX = sourceNode.position.x;
+        const targetX = targetNode.position.x;
+
+        let optimalSourceHandle = `${sBase}-right`;
+        let optimalTargetHandle = `${tBase}-left`;
+
+        // If source node is significantly to the right of the target node,
+        // connect source's left handle to target's right handle.
+        if (sourceX > targetX + 150) {
+          optimalSourceHandle = `${sBase}-left`;
+          optimalTargetHandle = `${tBase}-right`;
+        }
+
+        if (edge.sourceHandle !== optimalSourceHandle || edge.targetHandle !== optimalTargetHandle) {
+          changed = true;
+          return {
+            ...edge,
+            sourceHandle: optimalSourceHandle,
+            targetHandle: optimalTargetHandle,
+          };
+        }
+        return edge;
+      });
+
+      return changed ? newEdges : currentEdges;
+    });
+  }, [rfNodes, setEdges]);
 
   // Custom onNodesChange that handles both React Flow changes and schema updates
   const handleNodesChange = useCallback((changes: NodeChange[]) => {

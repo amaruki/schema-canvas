@@ -9,6 +9,7 @@ import {
   ReactFlowProvider,
   Panel,
   useReactFlow,
+  ConnectionMode,
   type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -340,6 +341,7 @@ const SchemaCanvasContent: React.FC = () => {
             colorMode={reactFlowIntegration.colorMode}
             minZoom={0.1}
             maxZoom={5}
+            connectionMode={ConnectionMode.Loose}
           >
             <Background className="bg-background" gap={16} />
             <Controls />

@@ -19,6 +19,8 @@ interface RelationshipEdgeProps extends EdgeProps {
   };
 }
 
+const MARKER_SIZE = 10
+
 // Define relationship types with their visual properties
 export const RELATIONSHIP_TYPES = {
   'one-to-one': {
@@ -26,42 +28,42 @@ export const RELATIONSHIP_TYPES = {
     color: '#10b981', // green-500
     strokeWidth: 2,
     strokeDasharray: '0',
-    markerSize: 12,
+    markerSize: MARKER_SIZE,
   },
   'one-to-many': {
     label: '1:N',
     color: '#3b82f6', // blue-500
     strokeWidth: 2,
     strokeDasharray: '0',
-    markerSize: 14,
+    markerSize: MARKER_SIZE,
   },
   'many-to-many': {
     label: 'N:N',
     color: '#f59e0b', // amber-500
     strokeWidth: 2.5,
     strokeDasharray: '5,5',
-    markerSize: 16,
+    markerSize: MARKER_SIZE,
   },
   'many-to-one': {
     label: 'N:1',
     color: '#8b5cf6', // violet-500
     strokeWidth: 2,
     strokeDasharray: '0',
-    markerSize: 14,
+    markerSize: MARKER_SIZE,
   },
   'zero-to-one': {
     label: '0:1',
     color: '#64748b', // slate-500
     strokeWidth: 1.5,
     strokeDasharray: '3,3',
-    markerSize: 12,
+    markerSize: MARKER_SIZE,
   },
   'zero-to-many': {
     label: '0:N',
     color: '#06b6d4', // cyan-500
     strokeWidth: 2,
     strokeDasharray: '3,3',
-    markerSize: 14,
+    markerSize: MARKER_SIZE,
   },
 } as const;
 
@@ -103,15 +105,16 @@ const RelationshipEdge: React.FC<RelationshipEdgeProps> = ({
       <defs>
         <marker
           id={markerId}
+          viewBox="0 0 10 10"
+          refX={8}
+          refY={5}
           markerWidth={typeConfig.markerSize}
           markerHeight={typeConfig.markerSize}
-          refX={typeConfig.markerSize}
-          refY={typeConfig.markerSize / 2}
-          orient="auto"
-          markerUnits="strokeWidth"
+          orient="auto-start-reverse"
+          markerUnits="userSpaceOnUse"
         >
           <path
-            d={`M0,0 L0,${typeConfig.markerSize} L${typeConfig.markerSize * 0.8},${typeConfig.markerSize / 2} z`}
+            d="M 0 0 L 10 5 L 0 10 z"
             fill={typeConfig.color}
           />
         </marker>
