@@ -209,10 +209,10 @@ export function exportToSQL(schema: Schema, dialect: SQLDialect = 'postgresql'):
       if (column.foreignKey) {
         const sourceTable = formatTableName(table.name, dialect);
         const sourceColumn = formatColumnName(column.name, dialect);
-        const targetTable = schema.tables.find(t => t.id === column.foreignKey.tableId);
+        const targetTable = schema.tables.find(t => t.id === column.foreignKey!.tableId);
 
         if (targetTable) {
-          const targetColumnName = targetTable.columns.find(c => c.id === column.foreignKey.columnId)?.name;
+          const targetColumnName = targetTable.columns.find(c => c.id === column.foreignKey!.columnId)?.name;
           if (targetColumnName) {
             const targetTableFormatted = formatTableName(targetTable.name, dialect);
             const targetColumnFormatted = formatColumnName(targetColumnName, dialect);
