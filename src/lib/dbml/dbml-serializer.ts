@@ -33,6 +33,11 @@ function columnConstraints(col: {
   return parts.length > 0 ? ` [${parts.join(', ')}]` : '';
 }
 
+// Quote identifiers that contain spaces or special characters
+function q(name: string): string {
+  return /[^a-zA-Z0-9_]/.test(name) ? `"${name}"` : name;
+}
+
 export function serializeToDbml(tables: Table[], relationships: Relationship[]): string {
   if (tables.length === 0) return '';
 
@@ -42,9 +47,9 @@ export function serializeToDbml(tables: Table[], relationships: Relationship[]):
 
   const tableBlocks = tables.map((table) => {
     const cols = table.columns.map((col) => {
-      return `  ${col.name} ${col.type}${columnConstraints(col)}`;
+      return `  ${q(col.name)} ${col.type}${columnConstraints(col)}`;
     });
-    return `Table ${table.name} {\n${cols.join('\n')}\n}`;
+    return `Table ${q(table.name)} {\n${cols.join('\n')}\n}`;
   });
 
   const refBlocks: string[] = [];
@@ -55,7 +60,7 @@ export function serializeToDbml(tables: Table[], relationships: Relationship[]):
     const tgtCol = colIdToName.get(rel.targetColumnId);
     if (!srcTable || !srcCol || !tgtTable || !tgtCol) return;
     refBlocks.push(
-      `Ref: ${srcTable}.${srcCol} ${refNotation(rel.type)} ${tgtTable}.${tgtCol}`
+      `Ref: ${q(srcTable)}.${q(srcCol)} ${refNotation(rel.type)} ${q(tgtTable)}.${q(tgtCol)}`
     );
   });
 
