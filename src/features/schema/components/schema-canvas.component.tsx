@@ -1,7 +1,3 @@
-/**
- * Refactored Schema Canvas Component with better separation of concerns
- */
-
 "use client";
 
 import React, { useCallback, useRef, useEffect } from "react";
@@ -10,10 +6,9 @@ import {
   Controls,
   MiniMap,
   Background,
-  BackgroundVariant,
   ReactFlowProvider,
   Panel,
-  ColorMode,
+  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -24,13 +19,12 @@ import { useRelationshipOperations } from "@/features/schema/hooks/use-relations
 import { useCanvasState } from "@/features/schema/hooks/use-canvas-state";
 import { useReactFlowIntegration } from "@/features/schema/hooks/use-react-flow-integration";
 import { generateTableSQL } from "@/features/schema/utils/sql-generator.utils";
-import { EXPORT_FORMATS, SQL_DIALECTS } from "@/constants/schema";
+import { findOpenSlot } from "@/lib/layout/smart-placement";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Plus, Download, Upload, RotateCcw, Settings, Database } from "lucide-react";
 
-// Components that will be refactored later
 import TableNode from "@/components/schema/table-node";
 import RelationshipEdge from "@/components/schema/relationship-edge";
 import ExportDialog from "@/components/export/export-dialog";
@@ -40,27 +34,28 @@ import NodeContextMenu from "@/components/schema/node-context-menu";
 import EdgeContextMenu from "@/components/schema/edge-context-menu";
 import ConnectionPanel from "@/components/schema/connection-panel";
 import RelationshipTypeSelector from "@/components/schema/relationship-type-selector";
+import LayoutPanel from "@/components/schema/layout-panel";
 
-// Component types
-const nodeTypes = {
-  table: TableNode,
-};
+const nodeTypes = { table: TableNode };
+const edgeTypes = { relationship: RelationshipEdge };
 
-const edgeTypes = {
-  relationship: RelationshipEdge,
-};
+// Strip handle suffix to get the base column ID
+function columnIdFromHandle(handleId: string): string {
+  return handleId
+    .replace(/-left-target$/, "")
+    .replace(/-right-target$/, "")
+    .replace(/-left$/, "")
+    .replace(/-right$/, "");
+}
 
 const SchemaCanvasContent: React.FC = () => {
-  // Schema data and operations
-  const { tables, relationships, clearSchema } = useSchema();
+  const { tables, relationships, updateTable, clearSchema } = useSchema();
   const tableOps = useTableOperations();
   const columnOps = useColumnOperations();
   const relationshipOps = useRelationshipOperations();
-
-  // Canvas state management
   const canvasState = useCanvasState();
+  const { getNodes, setNodes, screenToFlowPosition } = useReactFlow();
 
-  // React Flow integration
   const reactFlowIntegration = useReactFlowIntegration(
     tables,
     relationships,
@@ -69,80 +64,59 @@ const SchemaCanvasContent: React.FC = () => {
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
-  // Handle new connection creation
   function handleConnection(params: any) {
-    if (
-      !params.source ||
-      !params.target ||
-      !params.sourceHandle ||
-      !params.targetHandle
-    ) {
-      return;
-    }
+    if (!params.source || !params.target || !params.sourceHandle || !params.targetHandle) return;
 
     const sourceTable = tableOps.findTable(params.source);
     const targetTable = tableOps.findTable(params.target);
+    if (!sourceTable || !targetTable) return;
 
-    if (!sourceTable || !targetTable) {
-      return;
-    }
+    const sourceColId = columnIdFromHandle(params.sourceHandle);
+    const targetColId = columnIdFromHandle(params.targetHandle);
 
-    const sourceColumn = sourceTable.columns.find(
-      (c) => c.id === params.sourceHandle
-    );
-    const targetColumn = targetTable.columns.find(
-      (c) => c.id === params.targetHandle
-    );
+    const sourceColumn = sourceTable.columns.find((c) => c.id === sourceColId);
+    const targetColumn = targetTable.columns.find((c) => c.id === targetColId);
+    if (!sourceColumn || !targetColumn) return;
 
-    if (!sourceColumn || !targetColumn) {
-      return;
-    }
-
-    // Store the pending connection and show relationship type selector
     canvasState.setPendingConnectionData({
       source: params.source,
       sourceHandle: params.sourceHandle,
       target: params.target,
       targetHandle: params.targetHandle,
-      sourceColumn: {
-        name: sourceColumn.name,
-        table: sourceTable.name,
-      },
-      targetColumn: {
-        name: targetColumn.name,
-        table: targetTable.name,
-      },
+      sourceColumn: { name: sourceColumn.name, table: sourceTable.name },
+      targetColumn: { name: targetColumn.name, table: targetTable.name },
     });
   }
 
-  // Event handlers
   const handleAddTable = useCallback(() => {
-    tableOps.createNewTable();
-  }, [tableOps]);
+    const container = reactFlowWrapper.current;
+    const center = container
+      ? screenToFlowPosition({ x: container.clientWidth / 2, y: container.clientHeight / 2 })
+      : { x: 200, y: 200 };
+    const position = findOpenSlot(getNodes(), center);
+    tableOps.createNewTable(position);
+  }, [tableOps, getNodes, screenToFlowPosition]);
+
+  const handleLayout = useCallback(
+    (updatedTables: typeof tables) => {
+      updatedTables.forEach((t) => updateTable(t.id, { position: t.position }));
+    },
+    [updateTable]
+  );
 
   const handleClearSchema = useCallback(() => {
     clearSchema();
     canvasState.resetCanvasState();
   }, [clearSchema, canvasState]);
 
-  const handleExport = useCallback(() => {
-    canvasState.openExportDialog();
-  }, [canvasState]);
-
-  const handleImport = useCallback(() => {
-    canvasState.openImportDialog();
-  }, [canvasState]);
-
-  const handleSettings = useCallback(() => {
-    canvasState.openSettingsDialog();
-  }, [canvasState]);
+  const handleExport = useCallback(() => canvasState.openExportDialog(), [canvasState]);
+  const handleImport = useCallback(() => canvasState.openImportDialog(), [canvasState]);
+  const handleSettings = useCallback(() => canvasState.openSettingsDialog(), [canvasState]);
 
   const handleDrop = useCallback(
     (event: React.DragEvent) => {
       const result = reactFlowIntegration.handleDrop(event);
-      if (result) {
-        tableOps.createNewTable(result.position);
-      }
+      if (result) tableOps.createNewTable(result.position);
     },
     [reactFlowIntegration, tableOps]
   );
@@ -157,28 +131,16 @@ const SchemaCanvasContent: React.FC = () => {
 
   const handleNodeDoubleClick = useCallback(
     (event: React.MouseEvent, node: any) => {
-      const table = tableOps.findTable(node.id);
-      if (table) {
-        console.log("Double-clicked table:", table.name);
-        // TODO: Could trigger edit mode here
-      }
       reactFlowIntegration.handleNodeDoubleClick(event, node);
     },
-    [tableOps, reactFlowIntegration]
+    [reactFlowIntegration]
   );
 
   const handleNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: any) => {
       event.preventDefault();
       const table = tableOps.findTable(node.id);
-      if (table) {
-        canvasState.showNodeContextMenu(
-          event.clientX,
-          event.clientY,
-          node.id,
-          table
-        );
-      }
+      if (table) canvasState.showNodeContextMenu(event.clientX, event.clientY, node.id, table);
     },
     [tableOps, canvasState]
   );
@@ -187,14 +149,7 @@ const SchemaCanvasContent: React.FC = () => {
     (event: React.MouseEvent, edge: any) => {
       event.preventDefault();
       const relationship = relationshipOps.findRelationship(edge.id);
-      if (relationship) {
-        canvasState.showEdgeContextMenu(
-          event.clientX,
-          event.clientY,
-          edge.id,
-          relationship
-        );
-      }
+      if (relationship) canvasState.showEdgeContextMenu(event.clientX, event.clientY, edge.id, relationship);
     },
     [relationshipOps, canvasState]
   );
@@ -205,7 +160,6 @@ const SchemaCanvasContent: React.FC = () => {
     canvasState.setPendingConnectionData(null);
   }, [canvasState]);
 
-  // Context menu handlers
   const handleDeleteTable = useCallback(
     (tableId: string) => {
       tableOps.deleteExistingTable(tableId);
@@ -215,47 +169,30 @@ const SchemaCanvasContent: React.FC = () => {
   );
 
   const handleDuplicateTable = useCallback(
-    (table: any) => {
-      tableOps.duplicateExistingTable(table);
-    },
+    (table: any) => tableOps.duplicateExistingTable(table),
     [tableOps]
   );
 
   const handleEditTable = useCallback(
-    (tableId: string) => {
-      const table = tableOps.findTable(tableId);
-      if (table) {
-        canvasState.selectNode(tableId);
-        // TODO: Could trigger edit mode here
-      }
-    },
-    [tableOps, canvasState]
+    (tableId: string) => canvasState.selectNode(tableId),
+    [canvasState]
   );
 
   const handleToggleConnections = useCallback(
     (tableId: string) => {
       const table = tableOps.findTable(tableId);
-      if (table) {
-        canvasState.showConnectionPanel(table);
-      }
+      if (table) canvasState.showConnectionPanel(table);
     },
     [tableOps, canvasState]
   );
 
   const handleHighlightConnection = useCallback(
-    (relationshipId: string) => {
-      canvasState.highlightEdgeTemporarily(relationshipId, 2000);
-    },
+    (relationshipId: string) => canvasState.highlightEdgeTemporarily(relationshipId, 2000),
     [canvasState]
   );
 
   const handleExportTable = useCallback((table: any) => {
-    const sql = generateTableSQL(table, {
-      dialect: "postgresql",
-      includeDescriptions: false,
-      dropTables: false,
-    });
-
+    const sql = generateTableSQL(table, { dialect: "postgresql", includeDescriptions: false, dropTables: false });
     const blob = new Blob([sql], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -265,12 +202,10 @@ const SchemaCanvasContent: React.FC = () => {
     URL.revokeObjectURL(url);
   }, []);
 
-  // Relationship handlers
   const handleSelectRelationshipType = useCallback(
     (type: string) => {
       const pending = canvasState.pendingConnection;
       if (!pending) return;
-
       try {
         relationshipOps.createNewRelationship(
           pending.source,
@@ -282,7 +217,6 @@ const SchemaCanvasContent: React.FC = () => {
         canvasState.setPendingConnectionData(null);
       } catch (error) {
         console.error("Failed to create relationship:", error);
-        // Could show error toast here
       }
     },
     [canvasState, relationshipOps]
@@ -292,102 +226,55 @@ const SchemaCanvasContent: React.FC = () => {
     canvasState.setPendingConnectionData(null);
   }, [canvasState]);
 
-
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === ",") {
-        e.preventDefault();
-        handleSettings();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === "t") {
-        e.preventDefault();
-        handleAddTable();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === "e") {
-        e.preventDefault();
-        handleExport();
-      }
-      if (e.key === "Delete" && canvasState.selectedNodeId) {
-        e.preventDefault();
-        handleDeleteTable(canvasState.selectedNodeId);
-      }
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key === "d" &&
-        canvasState.selectedNodeId
-      ) {
+      if ((e.ctrlKey || e.metaKey) && e.key === ",") { e.preventDefault(); handleSettings(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "t") { e.preventDefault(); handleAddTable(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "e") { e.preventDefault(); handleExport(); }
+      if (e.key === "Delete" && canvasState.selectedNodeId) { e.preventDefault(); handleDeleteTable(canvasState.selectedNodeId); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "d" && canvasState.selectedNodeId) {
         e.preventDefault();
         const table = tableOps.findTable(canvasState.selectedNodeId);
-        if (table) {
-          handleDuplicateTable(table);
-        }
+        if (table) handleDuplicateTable(table);
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    canvasState.selectedNodeId,
-    handleAddTable,
-    handleDeleteTable,
-    handleDuplicateTable,
-    handleExport,
-    handleSettings,
-    tableOps,
-  ]);
+  }, [canvasState.selectedNodeId, handleAddTable, handleDeleteTable, handleDuplicateTable, handleExport, handleSettings, tableOps]);
 
   return (
     <div className="w-full h-screen bg-background">
       <div className="flex flex-col h-full">
         {/* Toolbar */}
-        <div className="p-4 bg-card border-b border-border">
+        <div className="px-4 py-2.5 bg-card border-b border-border">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">
-                    SC
-                  </span>
-                </div>
-                <div>
-                  <h1 className="text-base font-semibold text-foreground">
-                    SchemaCanvas
-                  </h1>
-                </div>
-              </div>
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Button
-                  onClick={handleAddTable}
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Table
-                </Button>
+                <div className="w-7 h-7 rounded bg-primary flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-xs">SC</span>
+                </div>
+                <span className="text-sm font-semibold text-foreground">SchemaCanvas</span>
               </div>
+              <Button onClick={handleAddTable} size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Plus className="h-4 w-4 mr-1.5" />
+                Add Table
+              </Button>
             </div>
-
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleImport}>
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4 mr-1.5" />
                 Import
               </Button>
               <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4 mr-1.5" />
                 Export
               </Button>
               <Button variant="outline" size="sm" onClick={handleClearSchema}>
-                <RotateCcw className="h-4 w-4 mr-2" />
+                <RotateCcw className="h-4 w-4 mr-1.5" />
                 Clear
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSettings}
-                className="border-border hover:bg-accent hover:text-accent-foreground transition-colors"
-              >
-                <Settings className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" onClick={handleSettings}>
+                <Settings className="h-4 w-4 mr-1.5" />
                 Settings
               </Button>
             </div>
@@ -423,8 +310,17 @@ const SchemaCanvasContent: React.FC = () => {
                 if (node.type === "table") return "hsl(var(--primary))";
                 return "hsl(var(--background))";
               }}
-              className="bg-card border border-border rounded-lg overflow-hidden"
+              className="bg-card border border-border rounded overflow-hidden"
             />
+
+            {/* Layout Panel */}
+            <Panel position="bottom-left" style={{ marginBottom: "60px" }}>
+              <LayoutPanel
+                tables={tables}
+                relationships={relationships}
+                onLayout={handleLayout}
+              />
+            </Panel>
 
             {/* Welcome Panel */}
             {reactFlowIntegration.nodes.length === 0 && (
@@ -432,11 +328,8 @@ const SchemaCanvasContent: React.FC = () => {
                 <Card className="p-6 max-w-md pointer-events-auto bg-card border border-border shadow-md">
                   <div className="flex items-center gap-3 mb-4">
                     <Database className="h-5 w-5 text-primary shrink-0" />
-                    <h3 className="text-base font-semibold text-foreground">
-                      Welcome to SchemaCanvas
-                    </h3>
+                    <h3 className="text-base font-semibold text-foreground">Welcome to SchemaCanvas</h3>
                   </div>
-
                   <div className="bg-muted rounded p-3 mb-4">
                     <p className="text-xs font-medium text-foreground mb-2">Quick Start</p>
                     <div className="text-xs space-y-2 text-muted-foreground">
@@ -454,12 +347,7 @@ const SchemaCanvasContent: React.FC = () => {
                       </div>
                     </div>
                   </div>
-
-                  <Button
-                    onClick={handleAddTable}
-                    size="sm"
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
+                  <Button onClick={handleAddTable} size="sm" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Table
                   </Button>
@@ -470,18 +358,9 @@ const SchemaCanvasContent: React.FC = () => {
         </div>
 
         {/* Dialogs */}
-        <ExportDialog
-          isOpen={canvasState.isExportDialogOpen}
-          onClose={canvasState.closeExportDialog}
-        />
-        <ImportDialog
-          isOpen={canvasState.isImportDialogOpen}
-          onClose={canvasState.closeImportDialog}
-        />
-        <SettingsDialog
-          isOpen={canvasState.isSettingsDialogOpen}
-          onClose={canvasState.closeSettingsDialog}
-        />
+        <ExportDialog isOpen={canvasState.isExportDialogOpen} onClose={canvasState.closeExportDialog} />
+        <ImportDialog isOpen={canvasState.isImportDialogOpen} onClose={canvasState.closeImportDialog} />
+        <SettingsDialog isOpen={canvasState.isSettingsDialogOpen} onClose={canvasState.closeSettingsDialog} />
 
         {/* Context Menus */}
         {canvasState.contextMenu && (
@@ -490,9 +369,7 @@ const SchemaCanvasContent: React.FC = () => {
             y={canvasState.contextMenu.y}
             nodeId={canvasState.contextMenu.nodeId}
             table={canvasState.contextMenu.table}
-            connections={relationshipOps.getRelationshipsForTable(
-              canvasState.contextMenu.nodeId
-            )}
+            connections={relationshipOps.getRelationshipsForTable(canvasState.contextMenu.nodeId)}
             isVisible={!!canvasState.contextMenu}
             onClose={canvasState.hideAllContextMenus}
             onDeleteTable={handleDeleteTable}
@@ -517,14 +394,11 @@ const SchemaCanvasContent: React.FC = () => {
           />
         )}
 
-        {/* Panels */}
         {canvasState.connectionPanelTable && (
           <div className="fixed top-20 right-4 z-40">
             <ConnectionPanel
               table={canvasState.connectionPanelTable}
-              relationships={relationshipOps.getRelationshipsForTable(
-                canvasState.connectionPanelTable.id
-              )}
+              relationships={relationshipOps.getRelationshipsForTable(canvasState.connectionPanelTable.id)}
               allTables={tables}
               onHighlightConnection={handleHighlightConnection}
               onDeleteRelationship={relationshipOps.deleteExistingRelationship}
@@ -533,7 +407,6 @@ const SchemaCanvasContent: React.FC = () => {
           </div>
         )}
 
-        {/* Relationship Type Selector */}
         {canvasState.pendingConnection && (
           <RelationshipTypeSelector
             sourceColumn={canvasState.pendingConnection.sourceColumn}
@@ -547,13 +420,10 @@ const SchemaCanvasContent: React.FC = () => {
   );
 };
 
-// Main component wrapper with ReactFlowProvider
-const SchemaCanvas: React.FC = () => {
-  return (
-    <ReactFlowProvider>
-      <SchemaCanvasContent />
-    </ReactFlowProvider>
-  );
-};
+const SchemaCanvas: React.FC = () => (
+  <ReactFlowProvider>
+    <SchemaCanvasContent />
+  </ReactFlowProvider>
+);
 
 export default SchemaCanvas;

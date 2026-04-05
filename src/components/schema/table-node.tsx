@@ -24,20 +24,19 @@ interface TableNodeData extends Node {
   table: any;
   data: {
     table: Table;
-    onTableUpdate?: (table: Table) => void;
-    onColumnUpdate?: (tableId: string, column: Column) => void;
-    onColumnDelete?: (tableId: string, columnId: string) => void;
-    onColumnAdd?: (tableId: string, column: Column) => void;
   }
 }
+
+const TYPE_OPTIONS = [
+  "string", "text", "integer", "bigint", "float", "decimal",
+  "boolean", "date", "datetime", "timestamp", "json", "uuid", "binary",
+];
 
 const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
   const { selected } = props;
   const data = props.data as unknown as TableNodeData;
-  if (!data || !data.table) {
-    console.error('TableNode data is undefined or null, or table is missing');
-    return null;
-  }
+  if (!data || !data.table) return null;
+
   const table = data.table;
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(table.name);
@@ -67,28 +66,13 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
 
   const handleAddColumn = () => {
     if (newColumn.name.trim()) {
-      addColumn(table.id, {
-        ...newColumn,
-        name: newColumn.name.trim(),
-      });
-      setNewColumn({
-        name: "",
-        type: "string",
-        nullable: true,
-        primaryKey: false,
-        unique: false,
-      });
+      addColumn(table.id, { ...newColumn, name: newColumn.name.trim() });
+      setNewColumn({ name: "", type: "string", nullable: true, primaryKey: false, unique: false });
       setIsAddingColumn(false);
     }
   };
 
-  const handleUpdateColumn = (columnId: string, updates: Partial<Column>) => {
-    updateColumn(table.id, columnId, updates);
-  };
-
-  const handleDeleteColumn = (columnId: string) => {
-    deleteColumn(table.id, columnId);
-  };
+  const handleDeleteColumn = (columnId: string) => deleteColumn(table.id, columnId);
 
   const handleEditColumn = (column: Column) => {
     setEditingColumn({ ...column });
@@ -97,7 +81,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
 
   const handleSaveEditColumn = () => {
     if (editingColumn && editingColumn.name.trim()) {
-      handleUpdateColumn(editingColumn.id, {
+      updateColumn(table.id, editingColumn.id, {
         name: editingColumn.name.trim(),
         type: editingColumn.type,
         nullable: editingColumn.nullable,
@@ -116,431 +100,252 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
     setEditingColumn(null);
   };
 
-  // Handle keyboard events for the edit dialog
   useEffect(() => {
     if (!isEditingColumn) return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleCancelEditColumn();
-      } else if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSaveEditColumn();
-      }
+      if (e.key === 'Escape') handleCancelEditColumn();
+      else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEditColumn(); }
     };
-
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isEditingColumn, editingColumn]);
 
-  const getColumnTypeIcon = (column: Column) => {
-    if (column.primaryKey) {
-      return <Key className="h-3 w-3 text-warning" />;
-    }
-    if (column.foreignKey) {
-      return <Link className="h-3 w-3 text-primary" />;
-    }
-    return null;
-  };
+  const hasHandle = (column: Column) => column.primaryKey || !!column.foreignKey;
 
   return (
     <>
       <Card
         className={cn(
-          "min-w-[18rem] backdrop-blur-sm border transition-shadow shadow-sm",
-          selected
-            ? "border-primary shadow-md"
-            : "border-border hover:border-primary/30 hover:shadow-sm"
+          "min-w-[15rem] border shadow-sm overflow-hidden",
+          selected ? "border-primary shadow-md" : "border-border"
         )}
       >
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            {isEditingName ? (
-              <div className="flex items-center gap-2 flex-1">
+        {/* Header */}
+        <div className="bg-primary px-3 py-2 flex items-center gap-2 group">
+          {isEditingName ? (
+            <Input
+              value={tempName}
+              onChange={(e) => setTempName(e.target.value)}
+              onBlur={handleNameUpdate}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleNameUpdate();
+                if (e.key === "Escape") { setIsEditingName(false); setTempName(table.name); }
+              }}
+              className="h-6 text-sm font-semibold bg-primary/80 border-primary-foreground/30 text-primary-foreground placeholder:text-primary-foreground/50 focus-visible:ring-primary-foreground/50 flex-1"
+              autoFocus
+            />
+          ) : (
+            <div
+              className="flex items-center gap-2 flex-1 cursor-pointer min-w-0"
+              onClick={() => setIsEditingName(true)}
+            >
+              <span className="text-sm font-semibold text-primary-foreground truncate">
+                {table.name}
+              </span>
+              <Edit2 className="h-3 w-3 text-primary-foreground/50 opacity-0 group-hover:opacity-100 shrink-0" />
+            </div>
+          )}
+        </div>
+
+        {/* Columns */}
+        <CardContent className="p-0">
+          {table.columns.map((column: Column) => (
+            <div
+              key={column.id}
+              className={cn(
+                "flex items-center py-1.5 px-2 text-xs group/row relative border-b border-border last:border-b-0",
+                column.primaryKey && "border-l-2 border-l-amber-400",
+                column.foreignKey && !column.primaryKey && "border-l-2 border-l-primary",
+              )}
+            >
+              {hasHandle(column) && (
+                <>
+                  <Handle
+                    type="source"
+                    position={Position.Left}
+                    id={`${column.id}-left`}
+                    className="!w-2.5 !h-2.5 !border-2 !border-card !-left-1.5 z-10"
+                  />
+                  <Handle
+                    type="target"
+                    position={Position.Left}
+                    id={`${column.id}-left-target`}
+                    className="!w-2.5 !h-2.5 !border-2 !border-card !-left-1.5 z-10 !opacity-0 !pointer-events-none"
+                  />
+                  <Handle
+                    type="source"
+                    position={Position.Right}
+                    id={`${column.id}-right`}
+                    className="!w-2.5 !h-2.5 !border-2 !border-card !-right-1.5 z-10 !opacity-0 !pointer-events-none"
+                  />
+                  <Handle
+                    type="target"
+                    position={Position.Right}
+                    id={`${column.id}-right-target`}
+                    className="!w-2.5 !h-2.5 !border-2 !border-card !-right-1.5 z-10"
+                  />
+                </>
+              )}
+
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                {column.primaryKey && <Key className="h-3 w-3 text-amber-500 shrink-0" />}
+                {column.foreignKey && !column.primaryKey && <Link className="h-3 w-3 text-primary shrink-0" />}
+                <span className="font-medium text-foreground truncate">
+                  {column.name}
+                  {!column.nullable && <span className="text-destructive ml-0.5">*</span>}
+                </span>
+                <span className="font-mono text-[10px] text-muted-foreground ml-auto shrink-0 pl-2">
+                  {column.type}
+                  {column.defaultValue && (
+                    <span className="text-primary/70"> ={column.defaultValue}</span>
+                  )}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-0.5 ml-1 opacity-0 group-hover/row:opacity-100">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-5 w-5 hover:bg-accent"
+                  onClick={() => handleEditColumn(column)}
+                >
+                  <Edit2 className="h-2.5 w-2.5 text-muted-foreground" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-5 w-5 hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => handleDeleteColumn(column.id)}
+                >
+                  <Trash2 className="h-2.5 w-2.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {isAddingColumn ? (
+            <div className="p-2 border-t border-border bg-muted/50 space-y-2">
+              <div className="flex gap-1.5">
                 <Input
-                  value={tempName}
-                  onChange={(e) => setTempName(e.target.value)}
-                  onBlur={handleNameUpdate}
+                  placeholder="Column name"
+                  value={newColumn.name}
+                  onChange={(e) => setNewColumn({ ...newColumn, name: e.target.value })}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleNameUpdate();
-                    if (e.key === "Escape") {
-                      setIsEditingName(false);
-                      setTempName(table.name);
-                    }
+                    if (e.key === 'Enter') handleAddColumn();
+                    if (e.key === 'Escape') setIsAddingColumn(false);
                   }}
-                  className="text-sm font-semibold h-8"
+                  className="h-7 text-xs flex-1"
                   autoFocus
                 />
+                <Select
+                  value={newColumn.type}
+                  onValueChange={(v) => setNewColumn({ ...newColumn, type: v as any })}
+                >
+                  <SelectTrigger className="h-7 text-xs w-28">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card">
+                    <SelectGroup>
+                      {TYPE_OPTIONS.map((t) => (
+                        <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </div>
-            ) : (
-              <div
-                className="flex items-center gap-2 flex-1 cursor-pointer"
-                onClick={() => setIsEditingName(true)}
-              >
-                <h3 className="text-sm font-semibold">{table.name}</h3>
-                <Edit2 className="h-3 w-3 text-muted-foreground hover:text-foreground transition-colors" />
+              <div className="flex items-center gap-3 flex-wrap">
+                {[
+                  { label: "Required", checked: !newColumn.nullable, onChange: (v: boolean) => setNewColumn({ ...newColumn, nullable: !v }) },
+                  { label: "Unique", checked: newColumn.unique, onChange: (v: boolean) => setNewColumn({ ...newColumn, unique: v }) },
+                  { label: "PK", checked: newColumn.primaryKey, onChange: (v: boolean) => setNewColumn({ ...newColumn, primaryKey: v }) },
+                ].map(({ label, checked, onChange }) => (
+                  <Label key={label} className="flex items-center gap-1 text-xs cursor-pointer">
+                    <Checkbox checked={checked} onCheckedChange={(c) => onChange(c === true)} className="h-3 w-3" />
+                    {label}
+                  </Label>
+                ))}
+                <div className="flex gap-1 ml-auto">
+                  <Button size="sm" onClick={handleAddColumn} className="h-6 text-xs px-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+                    Add
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setIsAddingColumn(false)} className="h-6 text-xs px-2">
+                    Cancel
+                  </Button>
+                </div>
               </div>
-            )}
-          </div>
-          {table.description && (
-            <p className="text-xs text-muted-foreground">{table.description}</p>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAddingColumn(true)}
+              className="w-full flex items-center gap-1.5 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted border-t border-border"
+            >
+              <Plus className="h-3 w-3" />
+              Add column
+            </button>
           )}
-        </CardHeader>
-
-        <CardContent className="pt-0">
-          <div className="space-y-1">
-            {table.columns.map((column: Column, index: number) => (
-              <div
-                key={column.id}
-                className={cn(
-                  "flex items-center justify-between p-3 rounded-lg border text-xs group relative transition-colors duration-150",
-                  index === 0 && "border-t-primary",
-                  column.primaryKey && "bg-warning/10 border-warning/30 text-warning shadow-[0_0_0_2px_hsl(var(--warning)/0.2)]",
-                  column.foreignKey && "bg-primary/10 border-primary/30 text-primary",
-                  !column.primaryKey && !column.foreignKey && "bg-muted border-border text-muted-foreground"
-                )}
-              >
-                {/* Left handle (source) */}
-                <Handle
-                  type="source"
-                  position={Position.Left}
-                  id={column.id}
-                  className="border-2 border-card shadow-sm -left-1.5 z-10"
-                />
-
-                {/* Right handle (target) */}
-                <Handle
-                  type="target"
-                  position={Position.Right}
-                  id={column.id}
-                  className="border-2 border-card shadow-sm -right-1.5 z-10"
-                />
-
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    {getColumnTypeIcon(column)}
-                    {column.primaryKey && (
-                      <div className="w-2 h-2 rounded-full bg-warning ring-2 ring-warning/30"></div>
-                    )}
-                    {column.unique && (
-                      <div className="w-2 h-2 rounded-full bg-primary"></div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground truncate">
-                        {column.name}
-                      </span>
-                      {!column.nullable && (
-                        <span className="text-destructive font-bold text-xs leading-none">
-                          *
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 text-muted-foreground text-[10px]">
-                      <span className="rounded bg-muted">
-                        {column.type}
-                      </span>
-                      {column.defaultValue && (
-                        <span className="text-primary">
-                          = {column.defaultValue}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity duration-150">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 hover:bg-accent rounded-md transition-colors"
-                    onClick={() => handleEditColumn(column)}
-                  >
-                    <Edit2 className="h-3 w-3 text-muted-foreground" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive rounded-md transition-colors"
-                    onClick={() => handleDeleteColumn(column.id)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-
-            {isAddingColumn ? (
-              <div className="p-3 border border-border rounded bg-muted/50">
-                <div className="space-y-3">
-                  <Input
-                    placeholder="Column name"
-                    value={newColumn.name}
-                    onChange={(e) =>
-                      setNewColumn({ ...newColumn, name: e.target.value })
-                    }
-                    className="text-sm font-semibold bg-card h-9"
-                    autoFocus
-                  />
-
-                  <div className="flex gap-2">
-                    <Select
-                      value={newColumn.type}
-                      onValueChange={(value) =>
-                        setNewColumn({ ...newColumn, type: value as any })
-                      }
-                      
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select a type data" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-card">
-                        <SelectGroup >
-                          <SelectItem value="string">String</SelectItem>
-                          <SelectItem value="text">Text</SelectItem>
-                          <SelectItem value="integer">Integer</SelectItem>
-                          <SelectItem value="bigint">Big Integer</SelectItem>
-                          <SelectItem value="float">Float</SelectItem>
-                          <SelectItem value="decimal">Decimal</SelectItem>
-                          <SelectItem value="boolean">Boolean</SelectItem>
-                          <SelectItem value="date">Date</SelectItem>
-                          <SelectItem value="datetime">DateTime</SelectItem>
-                          <SelectItem value="timestamp">Timestamp</SelectItem>
-                          <SelectItem value="json">JSON</SelectItem>
-                          <SelectItem value="uuid">UUID</SelectItem>
-                          <SelectItem value="binary">Binary</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    
-                    <Label className="flex items-center gap-2 text-xs bg-card px-3 py-2 rounded-md border border-border hover:border-primary/50 transition-colors cursor-pointer">
-                    <Checkbox
-                      id="required"
-                      checked={!newColumn.nullable}
-                      onCheckedChange={(checked) =>
-                          setNewColumn({
-                            ...newColumn,
-                            nullable: !checked,
-                          })
-                        }
-                      />
-                      <span className="font-medium">Required</span>
-                    </Label>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Label className="flex items-center gap-2 text-xs bg-card px-3 py-2 rounded-md border border-border hover:border-primary/50 transition-colors cursor-pointer">
-                      <Checkbox
-                        checked={newColumn.unique}
-                        onCheckedChange={(checked) =>
-                          setNewColumn({
-                            ...newColumn,
-                            unique: checked === true,
-                          })
-                        }
-                        className="rounded border-border text-secondary focus:ring-secondary"
-                      />
-                      <span className="font-medium">Unique</span>
-                    </Label>
-
-                    <Label className="flex items-center gap-2 text-xs bg-card px-3 py-2 rounded-md border border-border hover:border-primary/50 transition-colors cursor-pointer">
-                      <Checkbox
-                        checked={newColumn.primaryKey}
-                        onCheckedChange={(checked) =>
-                          setNewColumn({
-                            ...newColumn,
-                            primaryKey: checked === true,
-                          })
-                        }
-                        className="rounded border-border text-warning focus:ring-warning"
-                      />
-                      <span className="font-medium">Primary Key</span>
-                    </Label>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleAddColumn}
-                      className="flex-1 h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add Column
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setIsAddingColumn(false);
-                        setNewColumn({
-                          name: "",
-                          type: "string",
-                          nullable: true,
-                          primaryKey: false,
-                          unique: false,
-                        });
-                      }}
-                      className="flex-1 h-9 text-xs hover:bg-accent transition-colors"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <Button
-                variant="ghost"
-                onClick={() => setIsAddingColumn(true)}
-                className="w-full h-10 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 border-2 border-dashed border-border hover:border-primary rounded-lg transition-colors duration-150"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="font-medium">Add Column</span>
-              </Button>
-            )}
-          </div>
         </CardContent>
       </Card>
 
       {/* Edit Column Dialog */}
       {isEditingColumn && editingColumn && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/20 backdrop-blur-sm"
-            onClick={handleCancelEditColumn}
-          />
-
-          {/* Dialog */}
-          <div className="relative z-10 w-full max-w-md mx-4 animate-in zoom-in-95 duration-200">
-            <Card className="bg-card border-border shadow-2xl">
-              <CardHeader className="pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/20" onClick={handleCancelEditColumn} />
+          <div className="relative z-10 w-full max-w-md mx-4">
+            <Card className="bg-card border border-border shadow-lg">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Edit Column</h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCancelEditColumn}
-                    className="h-8 w-8 p-0 hover:bg-muted rounded-full"
-                  >
-                    <span className="text-2xl leading-none text-muted-foreground hover:text-foreground">×</span>
+                  <h3 className="text-sm font-semibold">Edit Column</h3>
+                  <Button variant="ghost" size="sm" onClick={handleCancelEditColumn} className="h-7 w-7 p-0 hover:bg-muted">
+                    <span className="text-base leading-none text-muted-foreground">x</span>
                   </Button>
                 </div>
               </CardHeader>
-
-              <CardContent className="space-y-4">
-                {/* Column Name */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Column Name</Label>
-                  <Input
-                    value={editingColumn.name}
-                    onChange={(e) => setEditingColumn({ ...editingColumn, name: e.target.value })}
-                    className="text-sm"
-                    placeholder="Enter column name"
-                    autoFocus
-                  />
+              <CardContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Column Name</Label>
+                  <Input value={editingColumn.name} onChange={(e) => setEditingColumn({ ...editingColumn, name: e.target.value })} className="h-8 text-sm" autoFocus />
                 </div>
-
-                {/* Column Type */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Data Type</Label>
-                  <Select
-                    value={editingColumn.type}
-                    onValueChange={(value) => setEditingColumn({ ...editingColumn, type: value as any })}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select data type" />
-                    </SelectTrigger>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Data Type</Label>
+                  <Select value={editingColumn.type} onValueChange={(v) => setEditingColumn({ ...editingColumn, type: v as any })}>
+                    <SelectTrigger className="h-8 text-sm w-full"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-card">
                       <SelectGroup>
-                        <SelectItem value="string">String</SelectItem>
-                        <SelectItem value="text">Text</SelectItem>
-                        <SelectItem value="integer">Integer</SelectItem>
-                        <SelectItem value="bigint">Big Integer</SelectItem>
-                        <SelectItem value="float">Float</SelectItem>
-                        <SelectItem value="decimal">Decimal</SelectItem>
-                        <SelectItem value="boolean">Boolean</SelectItem>
-                        <SelectItem value="date">Date</SelectItem>
-                        <SelectItem value="datetime">DateTime</SelectItem>
-                        <SelectItem value="timestamp">Timestamp</SelectItem>
-                        <SelectItem value="json">JSON</SelectItem>
-                        <SelectItem value="uuid">UUID</SelectItem>
-                        <SelectItem value="binary">Binary</SelectItem>
+                        {TYPE_OPTIONS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                       </SelectGroup>
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Default Value */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Default Value (Optional)</Label>
-                  <Input
-                    value={editingColumn.defaultValue || ''}
-                    onChange={(e) => setEditingColumn({ ...editingColumn, defaultValue: e.target.value || undefined })}
-                    className="text-sm"
-                    placeholder="Enter default value"
-                  />
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Default Value</Label>
+                  <Input value={editingColumn.defaultValue || ''} onChange={(e) => setEditingColumn({ ...editingColumn, defaultValue: e.target.value || undefined })} className="h-8 text-sm" placeholder="Optional" />
                 </div>
-
-                {/* Options */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">Options</Label>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <Label className="flex items-center gap-2 text-xs bg-card px-3 py-2 rounded-md border border-border hover:border-primary/50 transition-colors cursor-pointer">
-                      <Checkbox
-                        checked={!editingColumn.nullable}
-                        onCheckedChange={(checked) => setEditingColumn({ ...editingColumn, nullable: !checked })}
-                      />
-                      <span className="font-medium">Required</span>
+                <div className="flex items-center gap-4">
+                  {[
+                    { label: "Required", checked: !editingColumn.nullable, onChange: (v: boolean) => setEditingColumn({ ...editingColumn, nullable: !v }) },
+                    { label: "Unique", checked: editingColumn.unique, onChange: (v: boolean) => setEditingColumn({ ...editingColumn, unique: v }) },
+                    { label: "Primary Key", checked: editingColumn.primaryKey, onChange: (v: boolean) => setEditingColumn({ ...editingColumn, primaryKey: v }) },
+                  ].map(({ label, checked, onChange }) => (
+                    <Label key={label} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <Checkbox checked={checked} onCheckedChange={(c) => onChange(c === true)} />
+                      {label}
                     </Label>
-
-                    <Label className="flex items-center gap-2 text-xs bg-card px-3 py-2 rounded-md border border-border hover:border-primary/50 transition-colors cursor-pointer">
-                      <Checkbox
-                        checked={editingColumn.unique}
-                        onCheckedChange={(checked) => setEditingColumn({ ...editingColumn, unique: checked === true })}
-                      />
-                      <span className="font-medium">Unique</span>
-                    </Label>
-                  </div>
-
-                  <Label className="flex items-center gap-2 text-xs bg-card px-3 py-2 rounded-md border border-border hover:border-primary/50 transition-colors cursor-pointer">
-                    <Checkbox
-                      checked={editingColumn.primaryKey}
-                      onCheckedChange={(checked) => setEditingColumn({ ...editingColumn, primaryKey: checked === true })}
-                      className="rounded border-border text-warning focus:ring-warning"
-                    />
-                    <span className="font-medium">Primary Key</span>
-                  </Label>
+                  ))}
                 </div>
-
-                {/* Description */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Description (Optional)</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Description</Label>
                   <textarea
                     value={editingColumn.description || ''}
                     onChange={(e) => setEditingColumn({ ...editingColumn, description: e.target.value || undefined })}
-                    className="w-full text-sm p-3 border border-border rounded-md bg-background resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="Enter column description"
+                    className="w-full text-sm p-2 border border-border rounded bg-background resize-none h-16 focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Optional"
                   />
                 </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    onClick={handleSaveEditColumn}
-                    className="flex-1 h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
-                    disabled={!editingColumn.name.trim()}
-                  >
-                    Save Changes
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" onClick={handleSaveEditColumn} className="flex-1 h-8 text-xs bg-primary hover:bg-primary/90 text-primary-foreground" disabled={!editingColumn.name.trim()}>
+                    Save
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCancelEditColumn}
-                    className="flex-1 h-9 text-xs hover:bg-accent transition-colors"
-                  >
+                  <Button size="sm" variant="outline" onClick={handleCancelEditColumn} className="flex-1 h-8 text-xs">
                     Cancel
                   </Button>
                 </div>
