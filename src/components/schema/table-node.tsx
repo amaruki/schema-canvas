@@ -1,9 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Handle, Position, NodeProps, type Node } from '@xyflow/react';
 import { Table, Column } from "@/types/schema";
 import { useSchema } from "@/hooks/use-schema";
+import type { ColumnType } from "@/constants/schema";
+
+type SchemaState = {
+  updateTable: (id: string, updates: Partial<Table>) => void;
+  addColumn: (tableId: string, column: Omit<Column, 'id'>) => void;
+  updateColumn: (tableId: string, columnId: string, updates: Partial<Column>) => void;
+  deleteColumn: (tableId: string, columnId: string) => void;
+};
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,7 +29,7 @@ import { Plus, Edit2, Trash2, Key, Link } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TableNodeData extends Node {
-  table: any;
+  table: Table;
   data: {
     table: Table;
   }
@@ -35,15 +43,14 @@ const TYPE_OPTIONS = [
 const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
   const { selected } = props;
   const data = props.data as unknown as TableNodeData;
-  if (!data || !data.table) return null;
+  const table = data?.table;
 
-  const table = data.table;
   const [isEditingName, setIsEditingName] = useState(false);
-  const [tempName, setTempName] = useState(table.name);
+  const [tempName, setTempName] = useState(table?.name ?? '');
   const [isAddingColumn, setIsAddingColumn] = useState(false);
-  const [newColumn, setNewColumn] = useState({
+  const [newColumn, setNewColumn] = useState<{ name: string; type: ColumnType; nullable: boolean; primaryKey: boolean; unique: boolean }>({
     name: "",
-    type: "string" as const,
+    type: "string",
     nullable: true,
     primaryKey: false,
     unique: false,
@@ -51,10 +58,10 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
   const [isEditingColumn, setIsEditingColumn] = useState(false);
   const [editingColumn, setEditingColumn] = useState<Column | null>(null);
 
-  const updateTable = useSchema((state: any) => state.updateTable);
-  const addColumn = useSchema((state: any) => state.addColumn);
-  const updateColumn = useSchema((state: any) => state.updateColumn);
-  const deleteColumn = useSchema((state: any) => state.deleteColumn);
+  const updateTable = useSchema((state: SchemaState) => state.updateTable);
+  const addColumn = useSchema((state: SchemaState) => state.addColumn);
+  const updateColumn = useSchema((state: SchemaState) => state.updateColumn);
+  const deleteColumn = useSchema((state: SchemaState) => state.deleteColumn);
 
   const handleNameUpdate = () => {
     if (tempName.trim() && tempName !== table.name) {
@@ -79,7 +86,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
     setIsEditingColumn(true);
   };
 
-  const handleSaveEditColumn = () => {
+  const handleSaveEditColumn = useCallback(() => {
     if (editingColumn && editingColumn.name.trim()) {
       updateColumn(table.id, editingColumn.id, {
         name: editingColumn.name.trim(),
@@ -93,12 +100,12 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
       setIsEditingColumn(false);
       setEditingColumn(null);
     }
-  };
+  }, [editingColumn, updateColumn, table]);
 
-  const handleCancelEditColumn = () => {
+  const handleCancelEditColumn = useCallback(() => {
     setIsEditingColumn(false);
     setEditingColumn(null);
-  };
+  }, []);
 
   useEffect(() => {
     if (!isEditingColumn) return;
@@ -108,15 +115,17 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isEditingColumn, editingColumn]);
+  }, [isEditingColumn, handleSaveEditColumn, handleCancelEditColumn]);
 
   const hasHandle = (column: Column) => column.primaryKey || !!column.foreignKey;
+
+  if (!table) return null;
 
   return (
     <>
       <Card
         className={cn(
-          "min-w-[15rem] border shadow-sm overflow-hidden",
+          "min-w-60 border shadow-sm overflow-hidden",
           selected ? "border-primary shadow-md" : "border-border"
         )}
       >
@@ -164,25 +173,25 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
                     type="source"
                     position={Position.Left}
                     id={`${column.id}-left`}
-                    className="!w-2.5 !h-2.5 !border-2 !border-card !-left-1.5 z-10"
+                    className="w-2.5! h-2.5! border-2! border-card! -left-1.5 z-10!"
                   />
                   <Handle
                     type="target"
                     position={Position.Left}
                     id={`${column.id}-left-target`}
-                    className="!w-2.5 !h-2.5 !border-2 !border-card !-left-1.5 z-10 !opacity-0 !pointer-events-none"
+                    className="w-2.5! h-2.5! border-2! border-card! -left-1.5 z-10! opacity-0 pointer-events-none"
                   />
                   <Handle
                     type="source"
                     position={Position.Right}
                     id={`${column.id}-right`}
-                    className="!w-2.5 !h-2.5 !border-2 !border-card !-right-1.5 z-10 !opacity-0 !pointer-events-none"
+                    className="w-2.5! h-2.5! border-2! border-card! -right-1.5 z-10! opacity-0 pointer-events-none"
                   />
                   <Handle
                     type="target"
                     position={Position.Right}
                     id={`${column.id}-right-target`}
-                    className="!w-2.5 !h-2.5 !border-2 !border-card !-right-1.5 z-10"
+                    className="w-2.5! h-2.5! border-2! border-card! -right-1.5 z-10"
                   />
                 </>
               )}
@@ -239,7 +248,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
                 />
                 <Select
                   value={newColumn.type}
-                  onValueChange={(v) => setNewColumn({ ...newColumn, type: v as any })}
+                  onValueChange={(v) => setNewColumn({ ...newColumn, type: v as ColumnType })}
                 >
                   <SelectTrigger className="h-7 text-xs w-28">
                     <SelectValue />
@@ -307,7 +316,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Data Type</Label>
-                  <Select value={editingColumn.type} onValueChange={(v) => setEditingColumn({ ...editingColumn, type: v as any })}>
+                  <Select value={editingColumn.type} onValueChange={(v) => setEditingColumn({ ...editingColumn, type: v as ColumnType })}>
                     <SelectTrigger className="h-8 text-sm w-full"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-card">
                       <SelectGroup>

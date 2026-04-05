@@ -69,7 +69,7 @@ export function parseDbml(
 
   let database: DbmlDatabase;
   try {
-    database = new Parser().parse(text, 'dbmlv2') as DbmlDatabase;
+    database = new Parser().parse(text, 'dbmlv2') as unknown as DbmlDatabase;
   } catch (e: unknown) {
     // @dbml/core v6 throws { diags: [{ message, location }] } instead of a standard Error
     const err = e as DbmlError;
