@@ -69,6 +69,13 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(table?.name ?? '');
+  
+  React.useEffect(() => {
+    if (table?.name) {
+      setTempName(table.name);
+    }
+  }, [table?.name]);
+
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumn, setNewColumn] = useState<{ name: string; type: ColumnType; nullable: boolean; primaryKey: boolean; unique: boolean }>({
     name: "",
@@ -90,7 +97,6 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
       updateTable(table.id, { name: tempName.trim() });
     }
     setIsEditingName(false);
-    setTempName(table.name);
   };
 
   const handleAddColumn = () => {

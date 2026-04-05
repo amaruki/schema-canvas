@@ -153,8 +153,8 @@ export const useReactFlowIntegration = (
         }
 
         const rel = edge.data.relationship as Relationship;
-        const sBase = rel.sourceColumnId.replace(/-left-target$/, '').replace(/-right-target$/, '').replace(/-left$/, '').replace(/-right$/, '');
-        const tBase = rel.targetColumnId.replace(/-left-target$/, '').replace(/-right-target$/, '').replace(/-left$/, '').replace(/-right$/, '');
+        const sBase = rel.sourceColumnId.replace(/-left$/, '').replace(/-right$/, '');
+        const tBase = rel.targetColumnId.replace(/-left$/, '').replace(/-right$/, '');
 
         const sourceX = sourceNode.position.x;
         const targetX = targetNode.position.x;

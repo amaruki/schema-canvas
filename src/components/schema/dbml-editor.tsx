@@ -21,6 +21,12 @@ interface DbmlEditorProps {
 export const DbmlEditor: React.FC<DbmlEditorProps> = ({ value, onChange, errors, theme }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const onChangeRef = useRef(onChange);
+
+  // Keep the ref updated with the latest onChange callback
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -43,7 +49,7 @@ export const DbmlEditor: React.FC<DbmlEditorProps> = ({ value, onChange, errors,
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
-          onChange(update.state.doc.toString());
+          onChangeRef.current(update.state.doc.toString());
         }
       }),
       ...(theme === 'dark' ? [oneDark] : []),

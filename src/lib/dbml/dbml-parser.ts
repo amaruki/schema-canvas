@@ -83,8 +83,24 @@ export function parseDbml(
   const schema = database.schemas?.[0];
   if (!schema) return { tables: [], relationships: [], errors: [] };
 
-  const tables: Table[] = schema.tables.map((dbTable) => {
+  // Pass 1: Map exact name matches
+  const matchedExistingIds = new Set<string>();
+  const tableMatches = schema.tables.map((dbTable) => {
     const existing = existingTables.find((t) => t.name === dbTable.name);
+    if (existing) matchedExistingIds.add(existing.id);
+    return { dbTable, existing };
+  });
+
+  // Pass 2: Heuristic renaming
+  // If exactly one table is unmatched in both sets, map it.
+  const unmatchedExisting = existingTables.filter(t => !matchedExistingIds.has(t.id));
+  const unmatchedDbml = tableMatches.filter(m => !m.existing);
+  
+  if (unmatchedExisting.length === 1 && unmatchedDbml.length === 1) {
+    unmatchedDbml[0].existing = unmatchedExisting[0];
+  }
+
+  const tables: Table[] = tableMatches.map(({ dbTable, existing }) => {
     const position = existing?.position ?? findOpenSlot(existingNodes, center ?? { x: 200, y: 200 });
 
     const columns: Column[] = dbTable.fields.map((field) => {
@@ -133,7 +149,7 @@ export function parseDbml(
       // Append handle suffixes to match how canvas-created relationships store column IDs
       sourceColumnId: `${src.columnId}-right`,
       targetTableId: tgt.tableId,
-      targetColumnId: `${tgt.columnId}-left-target`,
+      targetColumnId: `${tgt.columnId}-left`,
       type: mapEndpointRelations(ep0.relation, ep1.relation),
     });
   });
