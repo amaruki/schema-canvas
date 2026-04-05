@@ -57,7 +57,7 @@ const SchemaCanvasContent: React.FC = () => {
   const columnOps = useColumnOperations();
   const relationshipOps = useRelationshipOperations();
   const canvasState = useCanvasState();
-  const { getNodes, setNodes, screenToFlowPosition } = useReactFlow();
+  const { getNodes, setNodes, screenToFlowPosition, fitView } = useReactFlow();
 
   const reactFlowIntegration = useReactFlowIntegration(
     tables,
@@ -103,8 +103,10 @@ const SchemaCanvasContent: React.FC = () => {
   const handleLayout = useCallback(
     (updatedTables: typeof tables) => {
       updatedTables.forEach((t) => updateTable(t.id, { position: t.position }));
+      // Fit view after layout with a small delay to let positions settle
+      setTimeout(() => fitView({ padding: 0.15, duration: 300 }), 50);
     },
-    [updateTable]
+    [updateTable, fitView]
   );
 
   const handleSchemaChange = useCallback(
@@ -336,6 +338,8 @@ const SchemaCanvasContent: React.FC = () => {
             onPaneClick={handlePaneClick}
             fitView
             colorMode={reactFlowIntegration.colorMode}
+            minZoom={0.1}
+            maxZoom={5}
           >
             <Background className="bg-background" gap={16} />
             <Controls />
@@ -350,7 +354,7 @@ const SchemaCanvasContent: React.FC = () => {
             />
 
             {/* Layout Panel */}
-            <Panel position="bottom-left" style={{ marginBottom: "60px" }}>
+            <Panel position="bottom-center" style={{ marginBottom: "8px" }}>
               <LayoutPanel
                 tables={tables}
                 relationships={relationships}

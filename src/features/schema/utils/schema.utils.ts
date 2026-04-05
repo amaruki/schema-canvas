@@ -101,6 +101,15 @@ export const validateColumn = (column: Partial<Column>): string[] => {
   return errors;
 };
 
+// Strip React Flow handle suffixes from column IDs
+function stripHandleSuffix(id: string): string {
+  return id
+    .replace(/-left-target$/, '')
+    .replace(/-right-target$/, '')
+    .replace(/-left$/, '')
+    .replace(/-right$/, '');
+}
+
 /**
  * Validates relationship data
  */
@@ -129,11 +138,16 @@ export const validateRelationship = (
     errors.push('Referenced tables must exist');
   }
 
-  if (sourceTable && !sourceTable.columns.find(c => c.id === relationship.sourceColumnId)) {
+  // Column IDs from React Flow handles include suffixes like -right, -left-target
+  // Strip them before comparing against actual column IDs
+  const sourceColId = relationship.sourceColumnId ? stripHandleSuffix(relationship.sourceColumnId) : '';
+  const targetColId = relationship.targetColumnId ? stripHandleSuffix(relationship.targetColumnId) : '';
+
+  if (sourceTable && !sourceTable.columns.find(c => c.id === sourceColId)) {
     errors.push('Source column must exist');
   }
 
-  if (targetTable && !targetTable.columns.find(c => c.id === relationship.targetColumnId)) {
+  if (targetTable && !targetTable.columns.find(c => c.id === targetColId)) {
     errors.push('Target column must exist');
   }
 

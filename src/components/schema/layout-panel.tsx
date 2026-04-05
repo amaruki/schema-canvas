@@ -2,7 +2,13 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { LayoutGrid, GitBranch, Wind, Circle } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { LayoutGrid, GitBranch, Wind, Circle, Sparkles } from "lucide-react";
 import { AutoLayout } from "@/lib/layout/auto-layout";
 import type { Table, Relationship } from "@/types/schema";
 
@@ -34,31 +40,43 @@ const LayoutPanel: React.FC<LayoutPanelProps> = ({ tables, relationships, onLayo
   };
 
   return (
-    <div className="bg-card border border-border rounded shadow-sm p-2 space-y-1.5 mb-1">
-      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Layout</p>
-      <div className="flex gap-1">
+    <TooltipProvider delayDuration={300}>
+      <div className="flex items-center gap-0.5 bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-md px-1 py-0.5">
         {ALGORITHMS.map(({ key, label, icon: Icon }) => (
-          <Button
-            key={key}
-            size="sm"
-            variant="outline"
-            className="flex-1 h-7 text-[10px] flex-col gap-0.5 px-1 py-1"
-            onClick={() => runLayout(key)}
-            title={label}
-          >
-            <Icon className="h-3 w-3" />
-            <span>{label}</span>
-          </Button>
+          <Tooltip key={key}>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
+                onClick={() => runLayout(key)}
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              {label} Layout
+            </TooltipContent>
+          </Tooltip>
         ))}
+        <div className="w-px h-4 bg-border mx-0.5" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              className="h-7 text-[10px] px-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
+              onClick={runAuto}
+            >
+              <Sparkles className="h-3 w-3 mr-1" />
+              Auto
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Auto-detect best layout
+          </TooltipContent>
+        </Tooltip>
       </div>
-      <Button
-        size="sm"
-        className="w-full h-7 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
-        onClick={runAuto}
-      >
-        Auto
-      </Button>
-    </div>
+    </TooltipProvider>
   );
 };
 
