@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useRef, useEffect } from "react";
+import React, { useCallback, useRef, useEffect, useState } from "react";
 import {
   ReactFlow,
   Controls,
@@ -24,7 +24,7 @@ import { findOpenSlot } from "@/lib/layout/smart-placement";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Download, Upload, RotateCcw, Settings, Database } from "lucide-react";
+import { Plus, Download, Upload, RotateCcw, Settings, Database, Code2 } from "lucide-react";
 
 import TableNode from "@/components/schema/table-node";
 import RelationshipEdge from "@/components/schema/relationship-edge";
@@ -36,6 +36,7 @@ import EdgeContextMenu from "@/components/schema/edge-context-menu";
 import ConnectionPanel from "@/components/schema/connection-panel";
 import RelationshipTypeSelector from "@/components/schema/relationship-type-selector";
 import LayoutPanel from "@/components/schema/layout-panel";
+import SchemaEditorPane from "@/components/schema/schema-editor-pane";
 
 const nodeTypes = { table: TableNode };
 const edgeTypes = { relationship: RelationshipEdge };
@@ -50,7 +51,8 @@ function columnIdFromHandle(handleId: string): string {
 }
 
 const SchemaCanvasContent: React.FC = () => {
-  const { tables, relationships, updateTable, clearSchema } = useSchema();
+  const { tables, relationships, updateTable, clearSchema, loadSchema, exportSchema } = useSchema();
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const tableOps = useTableOperations();
   const columnOps = useColumnOperations();
   const relationshipOps = useRelationshipOperations();
@@ -103,6 +105,13 @@ const SchemaCanvasContent: React.FC = () => {
       updatedTables.forEach((t) => updateTable(t.id, { position: t.position }));
     },
     [updateTable]
+  );
+
+  const handleSchemaChange = useCallback(
+    (newTables: typeof tables, newRelationships: typeof relationships) => {
+      loadSchema({ ...exportSchema(), tables: newTables, relationships: newRelationships });
+    },
+    [loadSchema, exportSchema]
   );
 
   // Persist final drag position to store so it survives re-renders
@@ -288,10 +297,26 @@ const SchemaCanvasContent: React.FC = () => {
                 <Settings className="h-4 w-4 mr-1.5" />
                 Settings
               </Button>
+              <Button
+                variant={isEditorOpen ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsEditorOpen((v) => !v)}
+                title="Toggle DBML editor"
+              >
+                <Code2 className="h-4 w-4 mr-1.5" />
+                DBML
+              </Button>
             </div>
           </div>
         </div>
 
+        <SchemaEditorPane
+          isOpen={isEditorOpen}
+          tables={tables}
+          relationships={relationships}
+          getNodes={getNodes}
+          onSchemaChange={handleSchemaChange}
+        >
         {/* Canvas */}
         <div className="flex-1 relative" ref={reactFlowWrapper}>
           <ReactFlow
@@ -367,6 +392,7 @@ const SchemaCanvasContent: React.FC = () => {
             )}
           </ReactFlow>
         </div>
+        </SchemaEditorPane>
 
         {/* Dialogs */}
         <ExportDialog isOpen={canvasState.isExportDialogOpen} onClose={canvasState.closeExportDialog} />
