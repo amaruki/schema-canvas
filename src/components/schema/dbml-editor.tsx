@@ -3,8 +3,12 @@
 import React, { useEffect, useRef } from 'react';
 import { EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { sql } from '@codemirror/lang-sql';
+import { lintGutter, setDiagnostics } from '@codemirror/lint';
+import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+import { bracketMatching, foldGutter, foldKeymap } from '@codemirror/language';
 import type { ParseError } from '@/lib/dbml/dbml-parser';
 
 interface DbmlEditorProps {
@@ -23,8 +27,19 @@ export const DbmlEditor: React.FC<DbmlEditorProps> = ({ value, onChange, errors,
 
     const extensions = [
       lineNumbers(),
+      lintGutter(),
+      foldGutter(),
       history(),
-      keymap.of([...defaultKeymap, ...historyKeymap]),
+      bracketMatching(),
+      closeBrackets(),
+      sql(),
+      keymap.of([
+        ...defaultKeymap,
+        ...historyKeymap,
+        ...closeBracketsKeymap,
+        ...foldKeymap,
+        indentWithTab
+      ]),
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
@@ -58,11 +73,43 @@ export const DbmlEditor: React.FC<DbmlEditorProps> = ({ value, onChange, errors,
     }
   }, [value]);
 
+  // Sync external errors into editor diagnostics
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    const diagnostics = errors.map((err) => {
+      let from = 0;
+      let to = 0;
+      if (err.line != null) {
+        // CodeMirror lines are 1-based
+        const lineNo = Math.max(1, Math.min(err.line, view.state.doc.lines));
+        const line = view.state.doc.line(lineNo);
+        from = line.from;
+        to = line.to;
+      } else {
+        from = 0;
+        to = view.state.doc.length;
+      }
+      return {
+        from,
+        to,
+        severity: 'error' as const,
+        message: err.message,
+      };
+    });
+
+    view.dispatch(setDiagnostics(view.state, diagnostics));
+  }, [errors]);
+
   const firstError = errors[0];
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
-      <div ref={containerRef} className="flex-1 overflow-auto text-sm font-mono" />
+      <div 
+        ref={containerRef} 
+        className="flex-1 overflow-auto text-sm font-mono [&_.cm-editor]:h-full [&_.cm-editor]:outline-none [&_.cm-scroller]:overflow-auto" 
+      />
       {firstError && (
         <div className="bg-destructive/10 text-destructive text-xs px-3 py-1.5 border-t border-destructive/20 shrink-0">
           {firstError.line != null ? `Line ${firstError.line}: ` : ''}{firstError.message}
