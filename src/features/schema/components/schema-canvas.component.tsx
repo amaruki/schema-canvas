@@ -9,6 +9,7 @@ import {
   ReactFlowProvider,
   Panel,
   useReactFlow,
+  type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -103,6 +104,16 @@ const SchemaCanvasContent: React.FC = () => {
     },
     [updateTable]
   );
+
+  // Persist final drag position to store so it survives re-renders
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    reactFlowIntegration.onNodesChange(changes);
+    changes.forEach((change: any) => {
+      if (change.type === 'position' && change.position && !change.dragging) {
+        tableOps.updateTablePosition(change.id, change.position);
+      }
+    });
+  }, [reactFlowIntegration, tableOps]);
 
   const handleClearSchema = useCallback(() => {
     clearSchema();
@@ -288,7 +299,7 @@ const SchemaCanvasContent: React.FC = () => {
             edges={reactFlowIntegration.edges}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            onNodesChange={reactFlowIntegration.onNodesChange}
+            onNodesChange={handleNodesChange}
             onEdgesChange={reactFlowIntegration.onEdgesChange}
             onConnect={reactFlowIntegration.handleConnect}
             onDrop={handleDrop}
