@@ -38,6 +38,15 @@ function q(name: string): string {
   return /[^a-zA-Z0-9_]/.test(name) ? `"${name}"` : name;
 }
 
+// Strip React Flow handle suffixes to get the base column ID
+function stripHandleSuffix(id: string): string {
+  return id
+    .replace(/-left-target$/, '')
+    .replace(/-right-target$/, '')
+    .replace(/-left$/, '')
+    .replace(/-right$/, '');
+}
+
 export function serializeToDbml(tables: Table[], relationships: Relationship[]): string {
   if (tables.length === 0) return '';
 
@@ -55,9 +64,9 @@ export function serializeToDbml(tables: Table[], relationships: Relationship[]):
   const refBlocks: string[] = [];
   relationships.forEach((rel) => {
     const srcTable = tableIdToName.get(rel.sourceTableId);
-    const srcCol = colIdToName.get(rel.sourceColumnId);
+    const srcCol = colIdToName.get(stripHandleSuffix(rel.sourceColumnId));
     const tgtTable = tableIdToName.get(rel.targetTableId);
-    const tgtCol = colIdToName.get(rel.targetColumnId);
+    const tgtCol = colIdToName.get(stripHandleSuffix(rel.targetColumnId));
     if (!srcTable || !srcCol || !tgtTable || !tgtCol) return;
     refBlocks.push(
       `Ref: ${q(srcTable)}.${q(srcCol)} ${refNotation(rel.type)} ${q(tgtTable)}.${q(tgtCol)}`

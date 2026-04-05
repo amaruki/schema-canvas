@@ -119,9 +119,10 @@ export function parseDbml(
     relationships.push({
       id: `rel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       sourceTableId: src.tableId,
-      sourceColumnId: src.columnId,
+      // Append handle suffixes to match how canvas-created relationships store column IDs
+      sourceColumnId: `${src.columnId}-right`,
       targetTableId: tgt.tableId,
-      targetColumnId: tgt.columnId,
+      targetColumnId: `${tgt.columnId}-left-target`,
       type: mapEndpointRelations(ep0.relation, ep1.relation),
     });
   });
