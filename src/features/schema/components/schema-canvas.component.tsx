@@ -28,7 +28,7 @@ import { EXPORT_FORMATS, SQL_DIALECTS } from "@/constants/schema";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Download, Upload, RotateCcw, Settings } from "lucide-react";
+import { Plus, Download, Upload, RotateCcw, Settings, Database } from "lucide-react";
 
 // Components that will be refactored later
 import TableNode from "@/components/schema/table-node";
@@ -341,29 +341,26 @@ const SchemaCanvasContent: React.FC = () => {
     <div className="w-full h-screen bg-background">
       <div className="flex flex-col h-full">
         {/* Toolbar */}
-        <div className="p-4 bg-card/95 backdrop-blur-xl border-b border-border shadow-sm">
+        <div className="p-4 bg-card border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-linear-to-br from-primary to-primary/80 flex items-center justify-center shadow-sm">
+                <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
                   <span className="text-primary-foreground font-bold text-sm">
                     SC
                   </span>
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                  <h1 className="text-base font-semibold text-foreground">
                     SchemaCanvas
                   </h1>
-                  <p className="text-xs text-muted-foreground">
-                    Visual Database Designer
-                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Button
                   onClick={handleAddTable}
                   size="sm"
-                  className="bg-linear-to-r from-primary to-primary/90 text-primary-foreground shadow-sm hover:opacity-90 transition-opacity"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Table
@@ -432,76 +429,40 @@ const SchemaCanvasContent: React.FC = () => {
             {/* Welcome Panel */}
             {reactFlowIntegration.nodes.length === 0 && (
               <Panel position="top-center" className="pointer-events-none">
-                <Card className="p-8 max-w-lg pointer-events-auto bg-card/95 backdrop-blur-xl border border-border shadow-2xl">
-                  <div className="text-center mb-6">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-linear-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
-                      <span className="text-2xl">🗃️</span>
-                    </div>
-                    <h3 className="text-2xl font-bold bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent mb-2">
+                <Card className="p-6 max-w-md pointer-events-auto bg-card border border-border shadow-md">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Database className="h-5 w-5 text-primary shrink-0" />
+                    <h3 className="text-base font-semibold text-foreground">
                       Welcome to SchemaCanvas
                     </h3>
-                    <p className="text-muted-foreground">
-                      Visual Database Designer
-                    </p>
                   </div>
 
-                  <div className="bg-linear-to-r from-primary/5 to-primary/10 rounded-xl p-4 mb-4">
-                    <h4 className="font-semibold text-foreground mb-3">
-                      Quick Start Guide
-                    </h4>
-                    <div className="text-sm space-y-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0">
-                          1
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            Add tables using the button
-                          </p>
-                          <p className="text-muted-foreground text-xs">
-                            Click "Add Table" to create your first table
-                          </p>
-                        </div>
+                  <div className="bg-muted rounded p-3 mb-4">
+                    <p className="text-xs font-medium text-foreground mb-2">Quick Start</p>
+                    <div className="text-xs space-y-2 text-muted-foreground">
+                      <div className="flex items-start gap-2">
+                        <span className="font-mono text-muted-foreground/60 shrink-0">1.</span>
+                        <span>Click "Add Table" to create a table</span>
                       </div>
-                      <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0">
-                          2
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            Customize your tables and columns
-                          </p>
-                          <p className="text-muted-foreground text-xs">
-                            Edit table names and add columns with different
-                            types
-                          </p>
-                        </div>
+                      <div className="flex items-start gap-2">
+                        <span className="font-mono text-muted-foreground/60 shrink-0">2.</span>
+                        <span>Edit table names and add columns</span>
                       </div>
-                      <div className="flex items-start gap-3">
-                        <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0">
-                          3
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            Create relationships between tables
-                          </p>
-                          <p className="text-muted-foreground text-xs">
-                            Drag from column handles to create relationships
-                          </p>
-                        </div>
+                      <div className="flex items-start gap-2">
+                        <span className="font-mono text-muted-foreground/60 shrink-0">3.</span>
+                        <span>Drag from column handles to create relationships</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="text-center">
-                    <Button
-                      onClick={handleAddTable}
-                      className="bg-linear-to-r from-primary to-primary/90 text-primary-foreground shadow-sm hover:opacity-90 transition-opacity"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Your First Table
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={handleAddTable}
+                    size="sm"
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Table
+                  </Button>
                 </Card>
               </Panel>
             )}

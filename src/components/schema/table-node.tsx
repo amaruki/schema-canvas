@@ -228,7 +228,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground truncate tracking-widest">
+                      <span className="font-medium text-foreground truncate">
                         {column.name}
                       </span>
                       {!column.nullable && (
@@ -272,7 +272,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
             ))}
 
             {isAddingColumn ? (
-              <div className="p-4 border-2 border-dashed border-primary rounded-lg shadow-inner bg-linear-to-br from-primary/5 to-primary/10">
+              <div className="p-3 border border-border rounded bg-muted/50">
                 <div className="space-y-3">
                   <Input
                     placeholder="Column name"
@@ -363,7 +363,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
                     <Button
                       size="sm"
                       onClick={handleAddColumn}
-                      className="flex-1 h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all"
+                      className="flex-1 h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
                       <Plus className="h-3 w-3 mr-1" />
                       Add Column
@@ -530,7 +530,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
                   <Button
                     size="sm"
                     onClick={handleSaveEditColumn}
-                    className="flex-1 h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all"
+                    className="flex-1 h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
                     disabled={!editingColumn.name.trim()}
                   >
                     Save Changes

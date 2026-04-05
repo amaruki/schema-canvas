@@ -120,7 +120,7 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({
   };
 
   return (
-    <Card className="w-80 h-96 bg-card/95 backdrop-blur-xl border-border shadow-2xl">
+    <Card className="w-80 h-96 bg-card border border-border shadow-md">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

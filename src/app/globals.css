@@ -220,19 +220,18 @@ body {
 }
 
 .react-flow__handle.source {
-  background: linear-gradient(135deg, var(--schema-edge-color), var(--schema-edge-hover));
+  background: var(--primary);
 }
 
 .react-flow__handle.target {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: #10b981;
 }
 
 .react-flow__controls {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(226, 232, 240, 0.5);
-  border-radius: 12px;
-  box-shadow: var(--shadow-lg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -251,15 +250,14 @@ body {
 }
 
 .react-flow__minimap {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(226, 232, 240, 0.5);
-  border-radius: 12px;
-  box-shadow: var(--shadow-lg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .react-flow__background {
-  background: linear-gradient(to bottom right, #fafbfc, #f8fafc);
+  background: var(--background);
 }
 
 .react-flow__background-pattern {
@@ -279,17 +277,17 @@ body {
 
 /* Dark theme styles for next-themes */
 .dark .react-flow__controls {
-  background: rgba(10, 10, 10, 0.9) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: var(--card);
+  border-color: var(--border);
 }
 
 .dark .react-flow__minimap {
-  background: rgba(10, 10, 10, 0.9) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: var(--card);
+  border-color: var(--border);
 }
 
 .dark .react-flow__background {
-  background: #111827 !important;
+  background: var(--background);
 }
 
 .dark .react-flow__background-pattern {

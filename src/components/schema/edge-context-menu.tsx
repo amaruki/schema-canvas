@@ -132,7 +132,7 @@ export const EdgeContextMenu: React.FC<EdgeContextMenuProps> = ({
           top: `${adjustedY}px`,
         }}
       >
-        <Card className="bg-card/95 backdrop-blur-xl border border-border shadow-2xl overflow-hidden">
+        <Card className="bg-card border border-border shadow-md overflow-hidden">
           <div className="p-2">
             {/* Relationship Info */}
             <div className="px-3 py-2 border-b border-border mb-2">

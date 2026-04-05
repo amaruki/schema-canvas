@@ -59,8 +59,8 @@ export const RelationshipTypeSelector: React.FC<RelationshipTypeSelectorProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-      <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-border shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto bg-card border border-border shadow-lg">
         <CardHeader>
           <CardTitle className="text-xl">Choose Relationship Type</CardTitle>
           <div className="text-sm text-muted-foreground">

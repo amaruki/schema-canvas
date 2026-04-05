@@ -43,7 +43,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
   if (!mounted) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/20" onClick={onClose} />
         <div className="relative z-10 w-full max-w-md mx-4">
           <Card className="bg-card border-border shadow-2xl">
             <CardHeader className="pb-4">
@@ -75,16 +75,16 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/20"
         onClick={onClose}
       />
 
       {/* Dialog */}
-      <div className="relative z-10 w-full max-w-md mx-4 animate-in zoom-in-95 duration-200">
-        <Card className="bg-card border-border shadow-2xl">
+      <div className="relative z-10 w-full max-w-md mx-4">
+        <Card className="bg-card border border-border shadow-lg">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-lg font-semibold">
@@ -112,9 +112,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
                   size="sm"
                   onClick={() => handleThemeChange('light')}
                   className={cn(
-                    "flex flex-col items-center gap-2 h-20 p-3 transition-all",
-                    theme === 'light' 
-                      ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary ring-offset-2" 
+                    "flex flex-col items-center gap-2 h-20 p-3",
+                    theme === 'light'
+                      ? "bg-primary text-primary-foreground border-2 border-primary"
                       : "hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
@@ -127,9 +127,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
                   size="sm"
                   onClick={() => handleThemeChange('dark')}
                   className={cn(
-                    "flex flex-col items-center gap-2 h-20 p-3 transition-all",
-                    theme === 'dark' 
-                      ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary ring-offset-2" 
+                    "flex flex-col items-center gap-2 h-20 p-3",
+                    theme === 'dark'
+                      ? "bg-primary text-primary-foreground border-2 border-primary"
                       : "hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
@@ -142,9 +142,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
                   size="sm"
                   onClick={() => handleThemeChange('system')}
                   className={cn(
-                    "flex flex-col items-center gap-2 h-20 p-3 transition-all",
-                    theme === 'system' 
-                      ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary ring-offset-2" 
+                    "flex flex-col items-center gap-2 h-20 p-3",
+                    theme === 'system'
+                      ? "bg-primary text-primary-foreground border-2 border-primary"
                       : "hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
