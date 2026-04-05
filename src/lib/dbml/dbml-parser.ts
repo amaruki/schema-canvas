@@ -52,8 +52,10 @@ export function parseDbml(
   try {
     database = new Parser().parse(text, 'dbmlv2');
   } catch (e: any) {
-    const msg: string = e.message ?? String(e);
-    const line: number | undefined = e.location?.start?.line;
+    // @dbml/core v6 throws { diags: [{ message, location }] } instead of a standard Error
+    const diag = e.diags?.[0];
+    const msg: string = diag?.message ?? e.message ?? String(e);
+    const line: number | undefined = diag?.location?.start?.line ?? e.location?.start?.line;
     return { tables: [], relationships: [], errors: [{ message: msg, line }] };
   }
 
