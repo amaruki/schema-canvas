@@ -30,12 +30,19 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
   const [editorText, setEditorText] = useState('');
   const [errors, setErrors] = useState<ParseError[]>([]);
   const isSyncingFromCanvas = useRef(false);
+  // Counts pending editor-initiated store updates so we skip the echo-back sync
+  const editorInitiated = useRef(0);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDragging = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Canvas -> Text: serialize when tables/relationships change
   useEffect(() => {
+    // Skip the sync that echoes back our own editor-initiated update
+    if (editorInitiated.current > 0) {
+      editorInitiated.current -= 1;
+      return;
+    }
     const newText = serializeToDbml(tables, relationships);
     if (newText === editorText) return;
     isSyncingFromCanvas.current = true;
@@ -58,6 +65,7 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
         const result = parseDbml(val, tables, nodes);
         setErrors(result.errors);
         if (result.errors.length === 0 && result.tables.length > 0) {
+          editorInitiated.current += 1;
           onSchemaChange(result.tables, result.relationships);
         }
       }, 600);

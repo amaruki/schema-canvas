@@ -21,7 +21,13 @@ export const useTableOperations = () => {
    * Creates a new table at specified position
    */
   const createNewTable = useCallback((position?: { x: number; y: number }) => {
+    let name = 'New Table';
+    let counter = 2;
+    while (tables.some(t => t.name === name)) {
+      name = `New Table ${counter++}`;
+    }
     const newTableData = createTable({
+      name,
       position: position || {
         x: Math.random() * 400 + 100,
         y: Math.random() * 300 + 100
@@ -37,7 +43,7 @@ export const useTableOperations = () => {
     });
 
     addTable(newTableData);
-  }, [addTable]);
+  }, [addTable, tables]);
 
   /**
    * Duplicates an existing table
