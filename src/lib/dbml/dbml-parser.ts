@@ -63,7 +63,8 @@ function mapEndpointRelations(r0: string, r1: string): RelationshipType {
 export function parseDbml(
   text: string,
   existingTables: Table[],
-  existingNodes: Node[]
+  existingNodes: Node[],
+  center?: { x: number; y: number }
 ): ParseResult {
   if (!text.trim()) return { tables: [], relationships: [], errors: [] };
 
@@ -84,7 +85,7 @@ export function parseDbml(
 
   const tables: Table[] = schema.tables.map((dbTable) => {
     const existing = existingTables.find((t) => t.name === dbTable.name);
-    const position = existing?.position ?? findOpenSlot(existingNodes, { x: 200, y: 200 });
+    const position = existing?.position ?? findOpenSlot(existingNodes, center ?? { x: 200, y: 200 });
 
     const columns: Column[] = dbTable.fields.map((field) => {
       const colId =

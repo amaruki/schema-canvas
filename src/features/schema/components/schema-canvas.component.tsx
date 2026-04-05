@@ -92,14 +92,23 @@ const SchemaCanvasContent: React.FC = () => {
     });
   }
 
-  const handleAddTable = useCallback(() => {
+  const getCenterPosition = useCallback(() => {
     const container = reactFlowWrapper.current;
-    const center = container
-      ? screenToFlowPosition({ x: container.clientWidth / 2, y: container.clientHeight / 2 })
-      : { x: 200, y: 200 };
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      return screenToFlowPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      });
+    }
+    return { x: 200, y: 200 };
+  }, [screenToFlowPosition]);
+
+  const handleAddTable = useCallback(() => {
+    const center = getCenterPosition();
     const position = findOpenSlot(getNodes(), center);
     tableOps.createNewTable(position);
-  }, [tableOps, getNodes, screenToFlowPosition]);
+  }, [tableOps, getNodes, getCenterPosition]);
 
   const handleLayout = useCallback(
     (updatedTables: typeof tables) => {
@@ -319,6 +328,7 @@ const SchemaCanvasContent: React.FC = () => {
           relationships={relationships}
           getNodes={getNodes}
           onSchemaChange={handleSchemaChange}
+          getCenterPosition={getCenterPosition}
         >
         {/* Canvas */}
         <div className="flex-1 relative" ref={reactFlowWrapper}>

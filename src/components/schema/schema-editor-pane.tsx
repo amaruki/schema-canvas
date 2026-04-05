@@ -15,6 +15,7 @@ interface SchemaEditorPaneProps {
   relationships: Relationship[];
   getNodes: () => Node[];
   onSchemaChange: (tables: Table[], relationships: Relationship[]) => void;
+  getCenterPosition?: () => { x: number; y: number };
 }
 
 export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
@@ -24,6 +25,7 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
   relationships,
   getNodes,
   onSchemaChange,
+  getCenterPosition,
 }) => {
   const { resolvedTheme } = useTheme();
   const [splitRatio, setSplitRatio] = useState(35);
@@ -62,7 +64,8 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
       debounceTimer.current = setTimeout(() => {
         const nodes = getNodes();
-        const result = parseDbml(val, tables, nodes);
+        const center = getCenterPosition?.();
+        const result = parseDbml(val, tables, nodes, center);
         setErrors(result.errors);
         if (result.errors.length === 0 && result.tables.length > 0) {
           editorInitiated.current += 1;
@@ -70,7 +73,7 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
         }
       }, 600);
     },
-    [getNodes, tables, onSchemaChange]
+    [getNodes, tables, onSchemaChange, getCenterPosition]
   );
 
   // Divider drag
