@@ -73,6 +73,7 @@ export interface SchemaNode extends Node<SchemaNodeData> {
 export interface SchemaEdgeData {
   [key: string]: unknown;
   relationship: Relationship;
+  isHighlighted?: boolean;
   onRelationshipUpdate?: (relationship: Relationship) => void;
   onRelationshipDelete?: (relationshipId: string) => void;
 }

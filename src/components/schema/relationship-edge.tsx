@@ -9,11 +9,13 @@ import {
   Position,
 } from '@xyflow/react';
 import { Badge } from '@/components/ui/badge';
-import { Relationship } from '@/types/schema';
+import { useCanvasState } from '@/features/schema/hooks/use-canvas-state';
+import { Relationship } from '@/features/schema/types/schema.types';
 
 interface RelationshipEdgeProps extends EdgeProps {
   data: {
     relationship: Relationship;
+    isHighlighted?: boolean;
     onRelationshipUpdate?: (relationship: Relationship) => void;
     onRelationshipDelete?: (relationshipId: string) => void;
   };
@@ -69,7 +71,7 @@ export const RELATIONSHIP_TYPES = {
 
 export type RelationshipType = keyof typeof RELATIONSHIP_TYPES;
 
-const RelationshipEdge: React.FC<RelationshipEdgeProps> = ({
+const RelationshipEdge: React.FC<RelationshipEdgeProps> = React.memo(({
   id,
   sourceX,
   sourceY,
@@ -81,21 +83,33 @@ const RelationshipEdge: React.FC<RelationshipEdgeProps> = ({
   selected,
   markerEnd,
 }) => {
-  if (!data?.relationship) return null;
+  const relationship = data?.relationship;
+  const sourceTableId = relationship?.sourceTableId;
+  const targetTableId = relationship?.targetTableId;
 
-  const { relationship } = data;
-  const typeConfig = RELATIONSHIP_TYPES[relationship.type as RelationshipType] || RELATIONSHIP_TYPES['one-to-many'];
+  // OPTIMIZATION: Only re-render this specific edge if its highlight state specifically changes.
+  // This avoids re-rendering every edge on every mouse move.
+  const isHighlighted = useCanvasState((state) => 
+    state.hoveredNodeId === sourceTableId || 
+    state.hoveredNodeId === targetTableId ||
+    state.selectedNodeId === sourceTableId ||
+    state.selectedNodeId === targetTableId
+  );
 
-  // Calculate bezier path for smooth curves
-  const [edgePath, labelX, labelY] = getBezierPath({
+  const typeConfig = RELATIONSHIP_TYPES[relationship?.type as RelationshipType] || RELATIONSHIP_TYPES['one-to-many'];
+
+  // Calculate bezier path for smooth curves - memoized to prevent recalculation on every render
+  const [edgePath, labelX, labelY] = React.useMemo(() => getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
     targetPosition,
-    curvature: 0.25, // Adjust for smoother curves
-  });
+    curvature: 0.25,
+  }), [sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition]);
+
+  if (!relationship) return null;
 
   const markerId = `arrow-${relationship.type}-${id}`;
 
@@ -120,18 +134,37 @@ const RelationshipEdge: React.FC<RelationshipEdgeProps> = ({
         </marker>
       </defs>
 
-      {/* The edge path */}
+      {/* Base Path (always visible, provides structure) */}
       <BaseEdge
-        id={id}
+        id={`${id}-base`}
         path={edgePath}
-        markerEnd={`url(#${markerId})`}
         style={{
           stroke: typeConfig.color,
           strokeWidth: typeConfig.strokeWidth,
           strokeDasharray: typeConfig.strokeDasharray,
-          filter: selected ? 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.5))' : undefined,
+          opacity: isHighlighted || selected ? 1 : 0.25, // Pop when active, dim when background
+          transition: 'opacity 0.3s ease', 
         }}
       />
+
+      {/* Animated Floating Dots (visible on highlight/select) */}
+      {(isHighlighted || selected) && (
+        <BaseEdge
+          id={`${id}-dots`}
+          path={edgePath}
+          markerEnd={`url(#${markerId})`}
+          style={{
+            stroke: typeConfig.color,
+            strokeWidth: typeConfig.strokeWidth + 2,
+            strokeDasharray: '0.1 24',
+            strokeLinecap: 'round',
+            animation: 'flow 1s linear infinite',
+            filter: `drop-shadow(0 0 4px ${typeConfig.color}cc)`,
+            opacity: 1, // Full brightness for the animated flow
+            pointerEvents: 'none',
+          }}
+        />
+      )}
 
       {/* Edge label */}
       <EdgeLabelRenderer>
@@ -157,6 +190,7 @@ const RelationshipEdge: React.FC<RelationshipEdgeProps> = ({
       </EdgeLabelRenderer>
     </>
   );
-};
+});
+RelationshipEdge.displayName = 'RelationshipEdge';
 
 export default RelationshipEdge;

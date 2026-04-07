@@ -185,6 +185,20 @@ const SchemaCanvasContent: React.FC = () => {
     },
     [relationshipOps, canvasState]
   );
+  
+  const handleNodeMouseEnter = useCallback(
+    (_: React.MouseEvent, node: any) => {
+      canvasState.setHoveredNode(node.id);
+    },
+    [canvasState]
+  );
+
+  const handleNodeMouseLeave = useCallback(
+    () => {
+      canvasState.setHoveredNode(null);
+    },
+    [canvasState]
+  );
 
   const handlePaneClick = useCallback(() => {
     canvasState.hideAllContextMenus();
@@ -344,6 +358,8 @@ const SchemaCanvasContent: React.FC = () => {
             onDragOver={reactFlowIntegration.handleDragOver}
             onNodeClick={handleNodeClick}
             onNodeDoubleClick={handleNodeDoubleClick}
+            onNodeMouseEnter={handleNodeMouseEnter}
+            onNodeMouseLeave={handleNodeMouseLeave}
             onNodeContextMenu={handleNodeContextMenu}
             onEdgeContextMenu={handleEdgeContextMenu}
             onPaneClick={handlePaneClick}

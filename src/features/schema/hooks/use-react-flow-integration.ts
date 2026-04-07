@@ -69,19 +69,21 @@ export const useReactFlowIntegration = (
 
   // Convert relationships to ReactFlow edges - MEMOIZED to prevent infinite loops
   const edges = useMemo((): SchemaEdge[] => {
-    return relationships.map((relationship: Relationship) => ({
-      id: relationship.id,
-      source: relationship.sourceTableId,
-      target: relationship.targetTableId,
-      sourceHandle: relationship.sourceColumnId,
-      targetHandle: relationship.targetColumnId,
-      type: 'relationship' as const,
-      data: {
-        relationship,
-        onRelationshipUpdate: () => {},
-        onRelationshipDelete: () => {},
-      },
-    }));
+    return relationships.map((relationship: Relationship) => {
+      return {
+        id: relationship.id,
+        source: relationship.sourceTableId,
+        target: relationship.targetTableId,
+        sourceHandle: relationship.sourceColumnId,
+        targetHandle: relationship.targetColumnId,
+        type: 'relationship' as const,
+        data: {
+          relationship,
+          onRelationshipUpdate: () => { },
+          onRelationshipDelete: () => { },
+        },
+      };
+    });
   }, [relationships]); // Only recreate when relationships change
 
   // React Flow state
@@ -120,11 +122,14 @@ export const useReactFlowIntegration = (
           return true;
         }
 
-        // Check relationship data changes, especially the type
+        // Check relationship data changes, especially the type and highlighting
         const currentRelationship = edge.data.relationship;
         const computedRelationship = computedEdge.data.relationship;
+        const currentIsHighlighted = edge.data.isHighlighted;
+        const computedIsHighlighted = computedEdge.data.isHighlighted;
 
         if (!currentRelationship || !computedRelationship) return true;
+        if (currentIsHighlighted !== computedIsHighlighted) return true;
 
         // Most importantly, check if relationship type changed
         if (currentRelationship.type !== computedRelationship.type) {

@@ -311,3 +311,16 @@ body {
 .dark .react-flow__edge.selected {
   stroke: #3b82f6;
 }
+
+@keyframes flow {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-flow {
+  animation: flow 1s linear infinite;
+}

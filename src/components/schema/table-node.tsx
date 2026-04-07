@@ -12,6 +12,7 @@ type SchemaState = {
   updateColumn: (tableId: string, columnId: string, updates: Partial<Column>) => void;
   deleteColumn: (tableId: string, columnId: string) => void;
 };
+import { useCanvasState } from "@/features/schema/hooks/use-canvas-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,7 +34,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Plus, Edit2, Trash2, Key, Link, GripVertical } from "lucide-react";
+import { Plus, Edit2, Trash2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TableNodeData extends Node {
@@ -137,14 +138,35 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = (props) => {
 
 
 
+  const hoveredNodeId = useCanvasState((state) => state.hoveredNodeId);
+  const selectedNodeId = useCanvasState((state) => state.selectedNodeId);
+
+  const isHighlighted = useSchema((state) => {
+    // 1. Direct interaction
+    if (hoveredNodeId === table.id || selectedNodeId === table.id) return true;
+    
+    // 2. Neighbor interaction (highlight neighbors of hovered/selected nodes)
+    if (hoveredNodeId || selectedNodeId) {
+      const activeId = hoveredNodeId || selectedNodeId;
+      return state.relationships.some(rel => 
+        (rel.sourceTableId === activeId && rel.targetTableId === table.id) ||
+        (rel.targetTableId === activeId && rel.sourceTableId === table.id)
+      );
+    }
+    
+    // 3. Default state (when nothing is hovered/selected)
+    return false; // User wants "by default dimmed"
+  });
+
   if (!table) return null;
 
   return (
     <>
       <Card
         className={cn(
-          "min-w-[240px] max-w-[340px] border rounded-xl shadow-lg bg-card/95 backdrop-blur-sm overflow-visible py-0 gap-0 transition-all duration-200",
-          selected ? "border-primary/60 shadow-primary/10 ring-2 ring-primary/20" : "border-border/60 hover:border-border shadow-black/5 dark:shadow-black/40"
+          "min-w-[240px] max-w-[340px] border rounded-xl shadow-lg bg-card/95 backdrop-blur-sm overflow-visible py-0 gap-0 transition-all duration-300",
+          selected ? "border-primary/60 shadow-primary/10 ring-2 ring-primary/20" : "border-border/60 shadow-black/5 dark:shadow-black/40",
+          isHighlighted ? "opacity-100 scale-[1.01] shadow-xl z-20" : "opacity-60 grayscale-[0.2] blur-[0.2px] z-10"
         )}
       >
         {/* Header */}
