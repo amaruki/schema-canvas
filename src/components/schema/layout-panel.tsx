@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { LayoutGrid, GitBranch, Wind, Circle, Sparkles } from "lucide-react";
+import { LayoutGrid, GitBranch, Wind, Circle, Sparkles, Warehouse } from "lucide-react";
 import { AutoLayout } from "@/lib/layout/auto-layout";
 import type { Table, Relationship } from "@/types/schema";
 
@@ -23,12 +23,13 @@ const ALGORITHMS = [
   { key: "hierarchical" as const, label: "Tree", icon: GitBranch },
   { key: "force-directed" as const, label: "Force", icon: Wind },
   { key: "circular" as const, label: "Radial", icon: Circle },
+  { key: "warehouse" as const, label: "Warehouse", icon: Warehouse },
 ];
 
 const LayoutPanel: React.FC<LayoutPanelProps> = ({ tables, relationships, onLayout }) => {
   if (tables.length === 0) return null;
 
-  const runLayout = (algorithm: "grid" | "hierarchical" | "force-directed" | "circular") => {
+  const runLayout = (algorithm: "grid" | "hierarchical" | "force-directed" | "circular" | "warehouse") => {
     const result = AutoLayout.layoutTables(tables, relationships, { algorithm });
     onLayout(result);
   };
