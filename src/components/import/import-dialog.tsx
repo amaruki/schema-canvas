@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from "sonner"
 import { useSchema } from '@/hooks/use-schema';
 import { parseDjangoModels, validateDjangoModels } from '@/lib/import/django-importer';
-import { LayoutOptions } from '@/lib/layout/auto-layout';
+import type { LayoutOptions } from '@/lib/layout/types';
 import { Upload, X, FileText, AlertCircle, CheckCircle, Settings, ChevronDown } from 'lucide-react';
 
 interface ImportDialogProps {

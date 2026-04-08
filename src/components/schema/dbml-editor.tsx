@@ -4,11 +4,11 @@ import React, { useEffect, useRef } from 'react';
 import { EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { oneDark } from '@codemirror/theme-one-dark';
-import { sql } from '@codemirror/lang-sql';
+import { dbml } from '@/lib/codemirror/dbml-language';
 import { lintGutter, setDiagnostics } from '@codemirror/lint';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { bracketMatching, foldGutter, foldKeymap } from '@codemirror/language';
+import { darkTheme, lightTheme } from '@/lib/codemirror/themes';
 import type { ParseError } from '@/lib/dbml/dbml-parser';
 
 interface DbmlEditorProps {
@@ -38,7 +38,7 @@ export const DbmlEditor: React.FC<DbmlEditorProps> = ({ value, onChange, errors,
       history(),
       bracketMatching(),
       closeBrackets(),
-      sql(),
+      dbml(),
       keymap.of([
         ...defaultKeymap,
         ...historyKeymap,
@@ -52,7 +52,7 @@ export const DbmlEditor: React.FC<DbmlEditorProps> = ({ value, onChange, errors,
           onChangeRef.current(update.state.doc.toString());
         }
       }),
-      ...(theme === 'dark' ? [oneDark] : []),
+      ...(theme === 'dark' ? darkTheme.extension : lightTheme.extension),
     ];
 
     const state = EditorState.create({ doc: value, extensions });

@@ -1,5 +1,6 @@
 import type { Table, Relationship } from '@/types/schema';
 import type { LayoutOptions } from './types';
+export type { LayoutOptions } from './types';
 import {
   gridLayout,
   hierarchicalLayout,
