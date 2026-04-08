@@ -38,13 +38,35 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
   const isDragging = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const prevSchemaFingerprint = useRef('');
+
   // Canvas -> Text: serialize when tables/relationships change
   useEffect(() => {
+    // Fingerprint schema to skip position-only changes
+    const fingerprint = JSON.stringify({
+      tables: tables.map(t => ({ 
+        id: t.id, 
+        name: t.name, 
+        alias: t.alias,
+        note: t.note,
+        headerColor: t.headerColor,
+        columns: t.columns 
+      })),
+      relationships
+    });
+
     // Skip the sync that echoes back our own editor-initiated update
     if (editorInitiated.current > 0) {
       editorInitiated.current -= 1;
+      prevSchemaFingerprint.current = fingerprint;
       return;
     }
+
+    if (fingerprint === prevSchemaFingerprint.current) {
+      return;
+    }
+    prevSchemaFingerprint.current = fingerprint;
+
     const newText = serializeToDbml(tables, relationships);
     if (newText === editorText) return;
     isSyncingFromCanvas.current = true;

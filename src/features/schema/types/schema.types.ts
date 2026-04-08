@@ -12,7 +12,9 @@ export interface Column {
   nullable: boolean;
   primaryKey: boolean;
   unique: boolean;
-  defaultValue?: string;
+  defaultValue?: string; // We'll keep it string-based for simplicity
+  note?: string;
+  increment?: boolean;
   foreignKey?: ForeignKey;
   description?: string;
 }
@@ -25,8 +27,13 @@ export interface ForeignKey {
 }
 
 export interface Table {
+  /** Internal ID for React Flow. E.g. table_12345 */
   id: string;
   name: string;
+  alias?: string;
+  note?: string;
+  headerColor?: string;
+  /** Essential layout data */
   position: { x: number; y: number };
   columns: Column[];
   description?: string;
@@ -36,10 +43,11 @@ export interface Table {
 export interface Relationship {
   id: string;
   sourceTableId: string;
-  sourceColumnId: string;
+  sourceColumnId: string; // the handle ID
   targetTableId: string;
-  targetColumnId: string;
+  targetColumnId: string; // the handle ID
   type: RelationshipType;
+  isInline?: boolean; // Whether the relationship was generated from an inline ref
   name?: string;
   onDelete?: ForeignKeyAction;
   onUpdate?: ForeignKeyAction;
