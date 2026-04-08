@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Plus, Download, Upload, RotateCcw, Settings, Database, Code2 } from "lucide-react";
 
+import { SchemaSelector } from "@/components/schema/schema-selector";
 import TableNode from "@/components/schema/table-node";
 import RelationshipEdge from "@/components/schema/relationship-edge";
 import ExportDialog from "@/components/export/export-dialog";
@@ -356,6 +357,7 @@ const SchemaCanvasContent: React.FC = () => {
                 </div>
                 <span className="text-sm font-semibold text-foreground">SchemaCanvas</span>
               </div>
+              <SchemaSelector />
               <Button onClick={handleAddTable} size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
                 <Plus className="h-4 w-4 mr-1.5" />
                 Add Table
