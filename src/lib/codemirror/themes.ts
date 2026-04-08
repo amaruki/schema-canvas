@@ -4,6 +4,7 @@ import { tags } from '@lezer/highlight';
 
 // VS Code Dark+ colors
 const darkColors = {
+  theme: 'dark' as const,
   bg: '#1e1e1e',
   bgSecondary: '#252526',
   bgTertiary: '#2d2d2d',
@@ -45,6 +46,7 @@ const darkColors = {
 
 // VS Code Light+ colors
 const lightColors = {
+  theme: 'light' as const,
   bg: '#ffffff',
   bgSecondary: '#f3f3f3',
   bgTertiary: '#e8e8e8',
@@ -84,7 +86,7 @@ const lightColors = {
   inserted: '#098658',
 };
 
-function createTheme(colors: typeof darkColors) {
+function createTheme(colors: typeof darkColors | typeof lightColors) {
   return EditorView.theme({
     '&': {
       backgroundColor: colors.bg,
@@ -131,9 +133,28 @@ function createTheme(colors: typeof darkColors) {
       backgroundColor: colors.lineHighlight,
     },
     '.cm-foldPlaceholder': {
-      backgroundColor: colors.bgTertiary,
-      borderColor: colors.bgTertiary,
+      backgroundColor: 'transparent',
+      border: 'none',
       color: colors.fgSecondary,
+      borderRadius: '3px',
+      padding: '0 4px',
+      margin: '0 2px',
+      cursor: 'pointer',
+      fontSize: '0.9em',
+      '&:hover': {
+        backgroundColor: colors.bgTertiary,
+        color: colors.fg,
+      },
+    },
+    '.cm-foldGutter': {
+      width: '20px',
+    },
+    '.cm-foldGutterMarker': {
+      color: colors.fgSecondary,
+      cursor: 'pointer',
+      '&:hover': {
+        color: colors.fg,
+      },
     },
     '.cm-tooltip': {
       backgroundColor: colors.bgSecondary,
@@ -155,24 +176,88 @@ function createTheme(colors: typeof darkColors) {
       },
     },
     '.cm-searchMatch': {
-      backgroundColor: '#515c6a40',
-      outline: `1px solid ${colors.bgTertiary}`,
+      backgroundColor: colors.theme === 'dark' ? '#515c6a60' : '#f6c589',
+      outline: `1px solid ${colors.theme === 'dark' ? '#515c6a' : '#d69e2e'}`,
     },
     '.cm-searchMatch.cm-searchMatch-selected': {
-      backgroundColor: '#515c6a80',
+      backgroundColor: colors.theme === 'dark' ? '#515c6a90' : '#f6c589',
     },
-    '.cm-panel label': {
+    // Search panel styling
+    '.cm-panels': {
+      backgroundColor: colors.bgSecondary,
       color: colors.fg,
+      borderBottom: `1px solid ${colors.bgTertiary}`,
     },
-    '.cm-button': {
-      backgroundColor: colors.bgTertiary,
+    '.cm-panel.cm-search': {
+      backgroundColor: colors.bgSecondary,
       color: colors.fg,
-      borderColor: colors.bgTertiary,
+      padding: '4px',
     },
-    '.cm-textfield': {
+    '.cm-panel.cm-search [name="close"]': {
+      color: colors.fgSecondary,
+      backgroundColor: 'transparent',
+      border: 'none',
+      cursor: 'pointer',
+      padding: '2px 4px',
+      '&:hover': {
+        color: colors.fg,
+        backgroundColor: colors.bgTertiary,
+      },
+    },
+    '.cm-panel.cm-search label': {
+      color: colors.fg,
+      fontSize: '12px',
+    },
+    '.cm-panel.cm-search input[type="text"]': {
       backgroundColor: colors.bg,
       borderColor: colors.bgTertiary,
       color: colors.fg,
+      borderRadius: '2px',
+      padding: '2px 4px',
+      fontSize: '12px',
+      border: '1px solid',
+      outline: 'none',
+      '&:focus': {
+        borderColor: colors.theme === 'dark' ? '#007acc' : '#007acc',
+      },
+    },
+    '.cm-panel.cm-search button': {
+      backgroundColor: colors.bgTertiary,
+      color: colors.fg,
+      border: '1px solid',
+      borderColor: colors.bgTertiary,
+      borderRadius: '2px',
+      padding: '2px 8px',
+      fontSize: '12px',
+      cursor: 'pointer',
+      '&:hover': {
+        backgroundColor: colors.bg,
+      },
+      '&:disabled': {
+        opacity: '0.5',
+        cursor: 'not-allowed',
+      },
+    },
+    '.cm-panel.cm-search input[type="checkbox"]': {
+      accentColor: '#007acc',
+      marginRight: '2px',
+    },
+    '.cm-panel.cm-search .cm-searchButton': {
+      backgroundColor: colors.theme === 'dark' ? '#0e639c' : '#007acc',
+      color: '#ffffff',
+      border: 'none',
+      '&:hover': {
+        backgroundColor: colors.theme === 'dark' ? '#1177bb' : '#0063a5',
+      },
+    },
+    '.cm-panel.cm-search .cm-replaceLabel': {
+      color: colors.fgSecondary,
+      fontSize: '11px',
+    },
+    '.cm-panel.cm-search .cm-searchInfo': {
+      color: colors.fgSecondary,
+      fontSize: '11px',
+      marginLeft: '4px',
     },
     // DBML StreamLanguage token styles
     '.cm-token-keyword': {
