@@ -2,19 +2,17 @@
  * Hook for column operations - encapsulates column-related state and logic
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSchema } from '@/hooks/use-schema';
 import type { Column, Table } from '@/features/schema/types/schema.types';
 import { createColumn, validateColumn } from '@/features/schema/utils/schema.utils';
 import { ID_GENERATORS } from '@/constants/schema';
 
 export const useColumnOperations = () => {
-  const {
-    addColumn,
-    updateColumn,
-    deleteColumn,
-    tables
-  } = useSchema();
+  const addColumn = useSchema((s) => s.addColumn);
+  const updateColumn = useSchema((s) => s.updateColumn);
+  const deleteColumn = useSchema((s) => s.deleteColumn);
+  const tables = useSchema((s) => s.tables);
 
   /**
    * Creates a new column in a table
@@ -214,7 +212,7 @@ export const useColumnOperations = () => {
     return { table, column };
   }, [tables]);
 
-  return {
+  return useMemo(() => ({
     // Actions
     createNewColumn,
     updateColumnProperties,
@@ -233,5 +231,7 @@ export const useColumnOperations = () => {
 
     // Queries
     findColumn
-  };
+  }), [
+    createNewColumn, updateColumnProperties, updateColumnName, updateColumnType, toggleColumnNullable, toggleColumnPrimaryKey, toggleColumnUnique, updateColumnDefaultValue, updateColumnDescription, deleteExistingColumn, validateColumnData, isColumnNameUnique, findColumn
+  ]);
 };

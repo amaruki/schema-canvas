@@ -52,13 +52,69 @@ function columnIdFromHandle(handleId: string): string {
 }
 
 const SchemaCanvasContent: React.FC = () => {
-  const { tables, relationships, updateTable, clearSchema, loadSchema, exportSchema } = useSchema();
+  const tables = useSchema((s) => s.tables);
+  const relationships = useSchema((s) => s.relationships);
+  const updateTable = useSchema((s) => s.updateTable);
+  const clearSchema = useSchema((s) => s.clearSchema);
+  const loadSchema = useSchema((s) => s.loadSchema);
+  const exportSchema = useSchema((s) => s.exportSchema);
+  
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const tableOps = useTableOperations();
   const columnOps = useColumnOperations();
   const relationshipOps = useRelationshipOperations();
-  const canvasState = useCanvasState();
+  
+  // Canvas State Selectors
+  const setPendingConnectionData = useCanvasState((s) => s.setPendingConnectionData);
+  const openExportDialog = useCanvasState((s) => s.openExportDialog);
+  const openImportDialog = useCanvasState((s) => s.openImportDialog);
+  const openSettingsDialog = useCanvasState((s) => s.openSettingsDialog);
+  const resetCanvasState = useCanvasState((s) => s.resetCanvasState);
+  const selectNode = useCanvasState((s) => s.selectNode);
+  const showNodeContextMenu = useCanvasState((s) => s.showNodeContextMenu);
+  const showEdgeContextMenu = useCanvasState((s) => s.showEdgeContextMenu);
+  const setHoveredNode = useCanvasState((s) => s.setHoveredNode);
+  const hideAllContextMenus = useCanvasState((s) => s.hideAllContextMenus);
+  const showConnectionPanel = useCanvasState((s) => s.showConnectionPanel);
+  const highlightEdgeTemporarily = useCanvasState((s) => s.highlightEdgeTemporarily);
+  const hideConnectionPanel = useCanvasState((s) => s.hideConnectionPanel);
+  
+  const hoveredNodeId = useCanvasState((s) => s.hoveredNodeId);
+  const selectedNodeId = useCanvasState((s) => s.selectedNodeId);
+  const setHighlightedTableIds = useCanvasState((s) => s.setHighlightedTableIds);
+  
+  // Dialog Open States
+  const isExportDialogOpen = useCanvasState((s) => s.isExportDialogOpen);
+  const closeExportDialog = useCanvasState((s) => s.closeExportDialog);
+  const isImportDialogOpen = useCanvasState((s) => s.isImportDialogOpen);
+  const closeImportDialog = useCanvasState((s) => s.closeImportDialog);
+  const isSettingsDialogOpen = useCanvasState((s) => s.isSettingsDialogOpen);
+  const closeSettingsDialog = useCanvasState((s) => s.closeSettingsDialog);
+  
+  // Additional States
+  const contextMenu = useCanvasState((s) => s.contextMenu);
+  const edgeContextMenu = useCanvasState((s) => s.edgeContextMenu);
+  const connectionPanelTable = useCanvasState((s) => s.connectionPanelTable);
+  const pendingConnection = useCanvasState((s) => s.pendingConnection);
+  
   const { getNodes, setNodes, screenToFlowPosition, fitView } = useReactFlow();
+
+  // Compute Highlighted Tables O(1)
+  useEffect(() => {
+    const activeId = hoveredNodeId || selectedNodeId;
+    if (!activeId) {
+      setHighlightedTableIds(new Set());
+      return;
+    }
+    
+    // Add active + neighbors
+    const ids = new Set<string>([activeId]);
+    relationships.forEach(rel => {
+      if (rel.sourceTableId === activeId) ids.add(rel.targetTableId);
+      if (rel.targetTableId === activeId) ids.add(rel.sourceTableId);
+    });
+    setHighlightedTableIds(ids);
+  }, [hoveredNodeId, selectedNodeId, relationships, setHighlightedTableIds]);
 
   const reactFlowIntegration = useReactFlowIntegration(
     tables,
@@ -82,7 +138,7 @@ const SchemaCanvasContent: React.FC = () => {
     const targetColumn = targetTable.columns.find((c) => c.id === targetColId);
     if (!sourceColumn || !targetColumn) return;
 
-    canvasState.setPendingConnectionData({
+    setPendingConnectionData({
       source: params.source,
       sourceHandle: params.sourceHandle,
       target: params.target,
@@ -138,12 +194,12 @@ const SchemaCanvasContent: React.FC = () => {
 
   const handleClearSchema = useCallback(() => {
     clearSchema();
-    canvasState.resetCanvasState();
-  }, [clearSchema, canvasState]);
+    resetCanvasState();
+  }, [clearSchema, resetCanvasState]);
 
-  const handleExport = useCallback(() => canvasState.openExportDialog(), [canvasState]);
-  const handleImport = useCallback(() => canvasState.openImportDialog(), [canvasState]);
-  const handleSettings = useCallback(() => canvasState.openSettingsDialog(), [canvasState]);
+  const handleExport = useCallback(() => openExportDialog(), [openExportDialog]);
+  const handleImport = useCallback(() => openImportDialog(), [openImportDialog]);
+  const handleSettings = useCallback(() => openSettingsDialog(), [openSettingsDialog]);
 
   const handleDrop = useCallback(
     (event: React.DragEvent) => {
@@ -155,10 +211,10 @@ const SchemaCanvasContent: React.FC = () => {
 
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: any) => {
-      canvasState.selectNode(node.id);
+      selectNode(node.id);
       reactFlowIntegration.handleNodeClick(event, node);
     },
-    [canvasState, reactFlowIntegration]
+    [selectNode, reactFlowIntegration]
   );
 
   const handleNodeDoubleClick = useCallback(
@@ -172,46 +228,46 @@ const SchemaCanvasContent: React.FC = () => {
     (event: React.MouseEvent, node: any) => {
       event.preventDefault();
       const table = tableOps.findTable(node.id);
-      if (table) canvasState.showNodeContextMenu(event.clientX, event.clientY, node.id, table);
+      if (table) showNodeContextMenu(event.clientX, event.clientY, node.id, table);
     },
-    [tableOps, canvasState]
+    [tableOps, showNodeContextMenu]
   );
 
   const handleEdgeContextMenu = useCallback(
     (event: React.MouseEvent, edge: any) => {
       event.preventDefault();
       const relationship = relationshipOps.findRelationship(edge.id);
-      if (relationship) canvasState.showEdgeContextMenu(event.clientX, event.clientY, edge.id, relationship);
+      if (relationship) showEdgeContextMenu(event.clientX, event.clientY, edge.id, relationship);
     },
-    [relationshipOps, canvasState]
+    [relationshipOps, showEdgeContextMenu]
   );
   
   const handleNodeMouseEnter = useCallback(
     (_: React.MouseEvent, node: any) => {
-      canvasState.setHoveredNode(node.id);
+      setHoveredNode(node.id);
     },
-    [canvasState]
+    [setHoveredNode]
   );
 
   const handleNodeMouseLeave = useCallback(
     () => {
-      canvasState.setHoveredNode(null);
+      setHoveredNode(null);
     },
-    [canvasState]
+    [setHoveredNode]
   );
 
   const handlePaneClick = useCallback(() => {
-    canvasState.hideAllContextMenus();
-    canvasState.selectNode(null);
-    canvasState.setPendingConnectionData(null);
-  }, [canvasState]);
+    hideAllContextMenus();
+    selectNode(null);
+    setPendingConnectionData(null);
+  }, [hideAllContextMenus, selectNode, setPendingConnectionData]);
 
   const handleDeleteTable = useCallback(
     (tableId: string) => {
       tableOps.deleteExistingTable(tableId);
-      canvasState.selectNode(null);
+      selectNode(null);
     },
-    [tableOps, canvasState]
+    [tableOps, selectNode]
   );
 
   const handleDuplicateTable = useCallback(
@@ -220,21 +276,21 @@ const SchemaCanvasContent: React.FC = () => {
   );
 
   const handleEditTable = useCallback(
-    (tableId: string) => canvasState.selectNode(tableId),
-    [canvasState]
+    (tableId: string) => selectNode(tableId),
+    [selectNode]
   );
 
   const handleToggleConnections = useCallback(
     (tableId: string) => {
       const table = tableOps.findTable(tableId);
-      if (table) canvasState.showConnectionPanel(table);
+      if (table) showConnectionPanel(table);
     },
-    [tableOps, canvasState]
+    [tableOps, showConnectionPanel]
   );
 
   const handleHighlightConnection = useCallback(
-    (relationshipId: string) => canvasState.highlightEdgeTemporarily(relationshipId, 2000),
-    [canvasState]
+    (relationshipId: string) => highlightEdgeTemporarily(relationshipId, 2000),
+    [highlightEdgeTemporarily]
   );
 
   const handleExportTable = useCallback((table: any) => {
@@ -250,43 +306,42 @@ const SchemaCanvasContent: React.FC = () => {
 
   const handleSelectRelationshipType = useCallback(
     (type: string) => {
-      const pending = canvasState.pendingConnection;
-      if (!pending) return;
+      if (!pendingConnection) return;
       try {
         relationshipOps.createNewRelationship(
-          pending.source,
-          pending.sourceHandle,
-          pending.target,
-          pending.targetHandle,
+          pendingConnection.source,
+          pendingConnection.sourceHandle,
+          pendingConnection.target,
+          pendingConnection.targetHandle,
           type
         );
-        canvasState.setPendingConnectionData(null);
+        setPendingConnectionData(null);
       } catch (error) {
         console.error("Failed to create relationship:", error);
       }
     },
-    [canvasState, relationshipOps]
+    [pendingConnection, relationshipOps, setPendingConnectionData]
   );
 
   const handleCancelRelationship = useCallback(() => {
-    canvasState.setPendingConnectionData(null);
-  }, [canvasState]);
+    setPendingConnectionData(null);
+  }, [setPendingConnectionData]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === ",") { e.preventDefault(); handleSettings(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "t") { e.preventDefault(); handleAddTable(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "e") { e.preventDefault(); handleExport(); }
-      if (e.key === "Delete" && canvasState.selectedNodeId) { e.preventDefault(); handleDeleteTable(canvasState.selectedNodeId); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "d" && canvasState.selectedNodeId) {
+      if (e.key === "Delete" && selectedNodeId) { e.preventDefault(); handleDeleteTable(selectedNodeId); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "d" && selectedNodeId) {
         e.preventDefault();
-        const table = tableOps.findTable(canvasState.selectedNodeId);
+        const table = tableOps.findTable(selectedNodeId);
         if (table) handleDuplicateTable(table);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canvasState.selectedNodeId, handleAddTable, handleDeleteTable, handleDuplicateTable, handleExport, handleSettings, tableOps]);
+  }, [selectedNodeId, handleAddTable, handleDeleteTable, handleDuplicateTable, handleExport, handleSettings, tableOps]);
 
   return (
     <div className="w-full h-screen bg-background">
@@ -427,20 +482,20 @@ const SchemaCanvasContent: React.FC = () => {
         </SchemaEditorPane>
 
         {/* Dialogs */}
-        <ExportDialog isOpen={canvasState.isExportDialogOpen} onClose={canvasState.closeExportDialog} />
-        <ImportDialog isOpen={canvasState.isImportDialogOpen} onClose={canvasState.closeImportDialog} />
-        <SettingsDialog isOpen={canvasState.isSettingsDialogOpen} onClose={canvasState.closeSettingsDialog} />
+        <ExportDialog isOpen={isExportDialogOpen} onClose={closeExportDialog} />
+        <ImportDialog isOpen={isImportDialogOpen} onClose={closeImportDialog} />
+        <SettingsDialog isOpen={isSettingsDialogOpen} onClose={closeSettingsDialog} />
 
         {/* Context Menus */}
-        {canvasState.contextMenu && (
+        {contextMenu && (
           <NodeContextMenu
-            x={canvasState.contextMenu.x}
-            y={canvasState.contextMenu.y}
-            nodeId={canvasState.contextMenu.nodeId}
-            table={canvasState.contextMenu.table}
-            connections={relationshipOps.getRelationshipsForTable(canvasState.contextMenu.nodeId)}
-            isVisible={!!canvasState.contextMenu}
-            onClose={canvasState.hideAllContextMenus}
+            x={contextMenu.x}
+            y={contextMenu.y}
+            nodeId={contextMenu.nodeId}
+            table={contextMenu.table}
+            connections={relationshipOps.getRelationshipsForTable(contextMenu.nodeId)}
+            isVisible={!!contextMenu}
+            onClose={hideAllContextMenus}
             onDeleteTable={handleDeleteTable}
             onDuplicateTable={handleDuplicateTable}
             onEditTable={handleEditTable}
@@ -449,37 +504,37 @@ const SchemaCanvasContent: React.FC = () => {
           />
         )}
 
-        {canvasState.edgeContextMenu && (
+        {edgeContextMenu && (
           <EdgeContextMenu
-            x={canvasState.edgeContextMenu.x}
-            y={canvasState.edgeContextMenu.y}
-            edgeId={canvasState.edgeContextMenu.edgeId}
-            relationship={canvasState.edgeContextMenu.relationship}
+            x={edgeContextMenu.x}
+            y={edgeContextMenu.y}
+            edgeId={edgeContextMenu.edgeId}
+            relationship={edgeContextMenu.relationship}
             allTables={tables}
-            isVisible={!!canvasState.edgeContextMenu}
-            onClose={canvasState.hideAllContextMenus}
+            isVisible={!!edgeContextMenu}
+            onClose={hideAllContextMenus}
             onUpdateRelationship={relationshipOps.updateRelationshipProperties}
             onDeleteRelationship={relationshipOps.deleteExistingRelationship}
           />
         )}
 
-        {canvasState.connectionPanelTable && (
+        {connectionPanelTable && (
           <div className="fixed top-20 right-4 z-40">
             <ConnectionPanel
-              table={canvasState.connectionPanelTable}
-              relationships={relationshipOps.getRelationshipsForTable(canvasState.connectionPanelTable.id)}
+              table={connectionPanelTable}
+              relationships={relationshipOps.getRelationshipsForTable(connectionPanelTable.id)}
               allTables={tables}
               onHighlightConnection={handleHighlightConnection}
               onDeleteRelationship={relationshipOps.deleteExistingRelationship}
-              onClose={canvasState.hideConnectionPanel}
+              onClose={hideConnectionPanel}
             />
           </div>
         )}
 
-        {canvasState.pendingConnection && (
+        {pendingConnection && (
           <RelationshipTypeSelector
-            sourceColumn={canvasState.pendingConnection.sourceColumn}
-            targetColumn={canvasState.pendingConnection.targetColumn}
+            sourceColumn={pendingConnection.sourceColumn}
+            targetColumn={pendingConnection.targetColumn}
             onSelectType={handleSelectRelationshipType}
             onCancel={handleCancelRelationship}
           />

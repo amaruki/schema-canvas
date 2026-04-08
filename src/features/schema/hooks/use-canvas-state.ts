@@ -26,6 +26,7 @@ interface CanvasState {
   selectedNodeId: string | null;
   hoveredNodeId: string | null;
   highlightedEdgeId: string | null;
+  highlightedTableIds: Set<string>;
   
   // Panel states
   connectionPanelTable: Table | null;
@@ -50,6 +51,7 @@ interface CanvasState {
   setHoveredNode: (nodeId: string | null) => void;
   highlightEdge: (edgeId: string | null) => void;
   highlightEdgeTemporarily: (edgeId: string, duration?: number) => void;
+  setHighlightedTableIds: (ids: Set<string>) => void;
   
   showConnectionPanel: (table: Table) => void;
   hideConnectionPanel: () => void;
@@ -72,6 +74,7 @@ export const useCanvasState = create<CanvasState>()(
       selectedNodeId: null,
       hoveredNodeId: null,
       highlightedEdgeId: null,
+      highlightedTableIds: new Set<string>(),
       connectionPanelTable: null,
 
       // Actions
@@ -103,6 +106,7 @@ export const useCanvasState = create<CanvasState>()(
         set({ highlightedEdgeId: edgeId });
         setTimeout(() => set({ highlightedEdgeId: null }), duration);
       },
+      setHighlightedTableIds: (ids) => set({ highlightedTableIds: ids }),
 
       showConnectionPanel: (table) => set({ connectionPanelTable: table }),
       hideConnectionPanel: () => set({ connectionPanelTable: null }),
@@ -113,6 +117,7 @@ export const useCanvasState = create<CanvasState>()(
         selectedNodeId: null,
         hoveredNodeId: null,
         highlightedEdgeId: null,
+        highlightedTableIds: new Set<string>(),
         connectionPanelTable: null,
         isConnecting: false,
         pendingConnection: null,
@@ -127,6 +132,7 @@ export const useCanvasState = create<CanvasState>()(
         selectedNodeId: null,
         hoveredNodeId: null,
         highlightedEdgeId: null,
+        highlightedTableIds: new Set<string>(),
         connectionPanelTable: null,
         isConnecting: false,
         pendingConnection: null,

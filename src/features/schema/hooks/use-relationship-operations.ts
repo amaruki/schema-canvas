@@ -2,20 +2,18 @@
  * Hook for relationship operations - encapsulates relationship-related state and logic
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSchema } from '@/hooks/use-schema';
 import type { Relationship, Table, Column } from '@/features/schema/types/schema.types';
 import { createRelationship, validateRelationship, getTableRelationships } from '@/features/schema/utils/schema.utils';
 import { ID_GENERATORS } from '@/constants/schema';
 
 export const useRelationshipOperations = () => {
-  const {
-    addRelationship,
-    updateRelationship,
-    deleteRelationship,
-    tables,
-    relationships
-  } = useSchema();
+  const addRelationship = useSchema((s) => s.addRelationship);
+  const updateRelationship = useSchema((s) => s.updateRelationship);
+  const deleteRelationship = useSchema((s) => s.deleteRelationship);
+  const tables = useSchema((s) => s.tables);
+  const relationships = useSchema((s) => s.relationships);
 
   /**
    * Creates a new relationship
@@ -215,7 +213,7 @@ export const useRelationshipOperations = () => {
     return relationships.filter(rel => rel.targetTableId === tableId);
   }, [relationships]);
 
-  return {
+  return useMemo(() => ({
     // Actions
     createNewRelationship,
     updateRelationshipProperties,
@@ -237,5 +235,10 @@ export const useRelationshipOperations = () => {
 
     // Data
     relationships
-  };
+  }), [
+    createNewRelationship, updateRelationshipProperties, updateRelationshipType, updateRelationshipName, updateRelationshipDeleteAction, 
+    updateRelationshipUpdateAction, deleteExistingRelationship, findRelationship, getRelationshipsForTable, getRelationshipsBetweenTables, 
+    relationshipExistsBetweenColumns, getRelationshipsForColumn, validatePotentialRelationship, getForeignKeyRelationships, 
+    getReferencedRelationships, relationships
+  ]);
 };

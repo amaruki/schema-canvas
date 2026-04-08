@@ -2,20 +2,18 @@
  * Hook for table operations - encapsulates table-related state and logic
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSchema } from '@/hooks/use-schema';
 import type { Table } from '@/features/schema/types/schema.types';
 import { createTable, duplicateTable } from '@/features/schema/utils/schema.utils';
 import { ID_GENERATORS } from '@/constants/schema';
 
 export const useTableOperations = () => {
-  const {
-    addTable,
-    updateTable,
-    deleteTable,
-    tables,
-    relationships
-  } = useSchema();
+  const addTable = useSchema((s) => s.addTable);
+  const updateTable = useSchema((s) => s.updateTable);
+  const deleteTable = useSchema((s) => s.deleteTable);
+  const tables = useSchema((s) => s.tables);
+  const relationships = useSchema((s) => s.relationships);
 
   /**
    * Creates a new table at specified position
@@ -124,7 +122,7 @@ export const useTableOperations = () => {
     );
   }, [tables]);
 
-  return {
+  return useMemo(() => ({
     // Actions
     createNewTable,
     duplicateExistingTable,
@@ -142,5 +140,9 @@ export const useTableOperations = () => {
     // Data
     tables,
     relationships
-  };
+  }), [
+    createNewTable, duplicateExistingTable, updateTableName, updateTablePosition, 
+    updateTableProperties, deleteExistingTable, findTable, getConnectedTables, 
+    getTableRelationships, isTableNameUnique, tables, relationships
+  ]);
 };

@@ -100,7 +100,7 @@ export const useReactFlowIntegration = (
           node.id !== computedNode.id ||
           node.position.x !== computedNode.position.x ||
           node.position.y !== computedNode.position.y ||
-          JSON.stringify(node.data) !== JSON.stringify(computedNode.data);
+          node.data.table !== computedNode.data.table;
       });
 
     if (nodesChanged) {
@@ -122,22 +122,19 @@ export const useReactFlowIntegration = (
           return true;
         }
 
-        // Check relationship data changes, especially the type and highlighting
         const currentRelationship = edge.data.relationship;
         const computedRelationship = computedEdge.data.relationship;
         const currentIsHighlighted = edge.data.isHighlighted;
         const computedIsHighlighted = computedEdge.data.isHighlighted;
 
         if (!currentRelationship || !computedRelationship) return true;
+
+        // Quick reference equality for relationship data
+        if (currentRelationship !== computedRelationship) return true;
+
         if (currentIsHighlighted !== computedIsHighlighted) return true;
 
-        // Most importantly, check if relationship type changed
-        if (currentRelationship.type !== computedRelationship.type) {
-          return true;
-        }
-
-        // Check other relationship properties
-        return JSON.stringify(currentRelationship) !== JSON.stringify(computedRelationship);
+        return false;
       });
 
     if (edgesChanged) {
@@ -146,47 +143,51 @@ export const useReactFlowIntegration = (
   }, [edges]); // Don't include setEdges or rfEdges in deps
 
   // Dynamically update edge handles based on node positions for auto-adjustment
+  // DEBOUNCED to avoid expensive recalculations on every drag frame
   useEffect(() => {
-    setEdges((currentEdges) => {
-      let changed = false;
-      const newEdges = currentEdges.map((edge) => {
-        const sourceNode = rfNodes.find((n) => n.id === edge.source);
-        const targetNode = rfNodes.find((n) => n.id === edge.target);
+    const handler = setTimeout(() => {
+      setEdges((currentEdges) => {
+        let changed = false;
+        const newEdges = currentEdges.map((edge) => {
+          const sourceNode = rfNodes.find((n) => n.id === edge.source);
+          const targetNode = rfNodes.find((n) => n.id === edge.target);
 
-        if (!sourceNode || !targetNode || !edge.data?.relationship) {
+          if (!sourceNode || !targetNode || !edge.data?.relationship) {
+            return edge;
+          }
+
+          const rel = edge.data.relationship as Relationship;
+          const sBase = rel.sourceColumnId.replace(/-left$/, '').replace(/-right$/, '');
+          const tBase = rel.targetColumnId.replace(/-left$/, '').replace(/-right$/, '');
+
+          const sourceX = sourceNode.position.x;
+          const targetX = targetNode.position.x;
+
+          let optimalSourceHandle = `${sBase}-right`;
+          let optimalTargetHandle = `${tBase}-left`;
+
+          // If source node is significantly to the right of the target node,
+          // connect source's left handle to target's right handle.
+          if (sourceX > targetX + 150) {
+            optimalSourceHandle = `${sBase}-left`;
+            optimalTargetHandle = `${tBase}-right`;
+          }
+
+          if (edge.sourceHandle !== optimalSourceHandle || edge.targetHandle !== optimalTargetHandle) {
+            changed = true;
+            return {
+              ...edge,
+              sourceHandle: optimalSourceHandle,
+              targetHandle: optimalTargetHandle,
+            };
+          }
           return edge;
-        }
+        });
 
-        const rel = edge.data.relationship as Relationship;
-        const sBase = rel.sourceColumnId.replace(/-left$/, '').replace(/-right$/, '');
-        const tBase = rel.targetColumnId.replace(/-left$/, '').replace(/-right$/, '');
-
-        const sourceX = sourceNode.position.x;
-        const targetX = targetNode.position.x;
-
-        let optimalSourceHandle = `${sBase}-right`;
-        let optimalTargetHandle = `${tBase}-left`;
-
-        // If source node is significantly to the right of the target node,
-        // connect source's left handle to target's right handle.
-        if (sourceX > targetX + 150) {
-          optimalSourceHandle = `${sBase}-left`;
-          optimalTargetHandle = `${tBase}-right`;
-        }
-
-        if (edge.sourceHandle !== optimalSourceHandle || edge.targetHandle !== optimalTargetHandle) {
-          changed = true;
-          return {
-            ...edge,
-            sourceHandle: optimalSourceHandle,
-            targetHandle: optimalTargetHandle,
-          };
-        }
-        return edge;
+        return changed ? newEdges : currentEdges;
       });
-
-      return changed ? newEdges : currentEdges;
-    });
+    }, 50); // 50ms debounce
+    return () => clearTimeout(handler);
   }, [rfNodes, setEdges]);
 
   // Custom onNodesChange that handles both React Flow changes and schema updates
@@ -321,7 +322,7 @@ export const useReactFlowIntegration = (
     });
   }, [reactFlowInstance]);
 
-  return {
+  return useMemo(() => ({
     // State - use the React Flow managed state
     nodes: rfNodes,
     edges: rfEdges,
@@ -354,5 +355,10 @@ export const useReactFlowIntegration = (
     centerView,
     zoomToNode,
     screenToFlowPosition: reactFlowInstance.screenToFlowPosition
-  };
+  }), [
+    rfNodes, rfEdges, colorMode, mounted, setNodes, setEdges, handleNodesChange, handleEdgesChange, handleConnect, 
+    handleDragOver, handleDrop, handleNodeClick, handleNodeDoubleClick, handleNodeContextMenu, handleEdgeContextMenu, 
+    handlePaneClick, findNode, findEdge, updateNodePosition, getTableFromNode, getRelationshipFromEdge, fitView, 
+    centerView, zoomToNode, reactFlowInstance.screenToFlowPosition
+  ]);
 };
