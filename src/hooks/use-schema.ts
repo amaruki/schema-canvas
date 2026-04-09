@@ -9,7 +9,11 @@ import {
   apiDeleteSchema,
   apiDuplicateSchema,
   apiSaveSchema,
+  apiGetVersions,
+  apiCreateVersion,
+  apiRestoreVersion,
   type SchemaSummary,
+  type SchemaVersionSummary,
 } from '@/lib/schema-api';
 
 interface SchemaState {
@@ -22,6 +26,7 @@ interface SchemaState {
   activeSchemaId: string | null;
   activeSchemaName: string;
   schemaList: SchemaSummary[];
+  versions: SchemaVersionSummary[];
   isLoading: boolean;
 
   // Actions
@@ -55,6 +60,11 @@ interface SchemaState {
   duplicateActiveSchema: () => Promise<string>;
   renameActiveSchema: (name: string) => Promise<void>;
   autoSave: () => Promise<void>;
+  
+  // Versioning actions
+  loadVersions: () => Promise<void>;
+  saveVersion: (label?: string) => Promise<string>;
+  restoreVersion: (versionId: string) => Promise<void>;
 }
 
 let saveTimeout: NodeJS.Timeout | null = null;
@@ -88,6 +98,7 @@ export const useSchema = create<SchemaState>()(
       activeSchemaId: null,
       activeSchemaName: 'Untitled Schema',
       schemaList: [],
+      versions: [],
       isLoading: false,
 
       // Table actions
@@ -296,6 +307,7 @@ export const useSchema = create<SchemaState>()(
               selectedRelationshipId: null,
               isDirty: false,
             });
+            await get().loadVersions();
           }
         } finally {
           set({ isLoading: false });
@@ -327,6 +339,7 @@ export const useSchema = create<SchemaState>()(
               selectedRelationshipId: null,
               isDirty: false,
             });
+            await get().loadVersions();
           }
         } finally {
           set({ isLoading: false });
@@ -396,6 +409,64 @@ export const useSchema = create<SchemaState>()(
           set({ isDirty: false });
         }
       },
+      
+      // Versioning actions
+      loadVersions: async () => {
+        const state = get();
+        if (!state.activeSchemaId) return;
+        
+        try {
+          const list = await apiGetVersions(state.activeSchemaId);
+          set({ versions: list });
+        } catch (error) {
+          console.error("Failed to load versions", error);
+        }
+      },
+      
+      saveVersion: async (label) => {
+        const state = get();
+        if (!state.activeSchemaId) throw new Error('No active schema');
+        
+        set({ isLoading: true });
+        try {
+          // If dirty, save current state first
+          if (state.isDirty) {
+            await apiSaveSchema({
+              id: state.activeSchemaId,
+              name: state.activeSchemaName,
+              tables: state.tables,
+              relationships: state.relationships,
+            });
+            set({ isDirty: false });
+          }
+          
+          const versionId = await apiCreateVersion(state.activeSchemaId, label);
+          await get().loadVersions();
+          return versionId;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+      
+      restoreVersion: async (versionId) => {
+        const state = get();
+        if (!state.activeSchemaId) throw new Error('No active schema');
+        
+        set({ isLoading: true });
+        try {
+          const result = await apiRestoreVersion(state.activeSchemaId, versionId);
+          set({
+            tables: result.tables,
+            relationships: result.relationships,
+            isDirty: false,
+            selectedTableId: null,
+            selectedRelationshipId: null,
+          });
+          await get().loadVersions();
+        } finally {
+          set({ isLoading: false });
+        }
+      },      
     }),
     { name: 'schema-store' }
   )

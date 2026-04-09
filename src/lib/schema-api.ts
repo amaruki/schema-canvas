@@ -9,6 +9,13 @@ export interface SchemaSummary {
   updatedAt: string;
 }
 
+export interface SchemaVersionSummary {
+  id: string;
+  versionNumber: number;
+  label: string | null;
+  createdAt: string;
+}
+
 // Strip React Flow handle suffixes from column IDs
 function stripHandleSuffix(id: string): string {
   if (!id) return id;
@@ -114,4 +121,57 @@ export async function apiDuplicateSchema(id: string): Promise<string> {
   if (!res.ok) throw new Error('Failed to duplicate schema');
   const data = await res.json();
   return data.id;
+}
+
+// --- VERSIONING ---
+
+export async function apiGetVersions(schemaId: string): Promise<SchemaVersionSummary[]> {
+  const res = await fetch(`/api/schemas/${schemaId}/versions`);
+  if (!res.ok) throw new Error('Failed to fetch schema versions');
+  return res.json();
+}
+
+export async function apiCreateVersion(schemaId: string, label?: string): Promise<string> {
+  const res = await fetch(`/api/schemas/${schemaId}/versions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label }),
+  });
+  if (!res.ok) throw new Error('Failed to create schema version');
+  const data = await res.json();
+  return data.id;
+}
+
+export async function apiRestoreVersion(schemaId: string, versionId: string): Promise<{
+  success: boolean;
+  newVersionId: string;
+  tables: Table[];
+  relationships: Relationship[];
+}> {
+  const res = await fetch(`/api/schemas/${schemaId}/versions/${versionId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'restore' }),
+  });
+  if (!res.ok) throw new Error('Failed to restore schema version');
+  
+  const data = await res.json();
+  
+  // Normalize data like we do in apiGetSchemaById
+  if (data.tables) {
+    data.tables = data.tables.map((table: any) => ({
+      ...table,
+      position: { x: table.positionX || 0, y: table.positionY || 0 },
+    }));
+  }
+  
+  if (data.relationships) {
+    data.relationships = data.relationships.map((rel: any) => ({
+      ...rel,
+      sourceColumnId: stripHandleSuffix(rel.sourceColumnId),
+      targetColumnId: stripHandleSuffix(rel.targetColumnId),
+    }));
+  }
+  
+  return data;
 }

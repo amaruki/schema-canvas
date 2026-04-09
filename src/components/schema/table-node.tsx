@@ -143,6 +143,18 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
     return state.highlightedTableIds.has(table.id);
   });
 
+  const detailLevel = useCanvasState((state) => state.detailLevel);
+
+  const visibleColumns = React.useMemo(() => {
+    if (detailLevel === 'compact') return [];
+    if (detailLevel === 'keys-only') return table.columns.filter(c => c.primaryKey || c.foreignKey || c.unique);
+    return table.columns;
+  }, [table.columns, detailLevel]);
+
+  const hiddenColumns = React.useMemo(() => {
+    return table.columns.filter(c => !visibleColumns.includes(c));
+  }, [table.columns, visibleColumns]);
+
   if (!table) return null;
 
   return (
@@ -154,8 +166,16 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
           isHighlighted ? "opacity-100 scale-[1.01] shadow-xl z-20" : "opacity-60 grayscale-[0.2] blur-[0.2px] z-10"
         )}
       >
+        {/* Fallback invisible handles for hidden columns so relationships remain connected */}
+        {hiddenColumns.map(column => (
+          <React.Fragment key={`hidden-${column.id}`}>
+            <Handle type="source" position={Position.Left} id={`${column.id}-left`} style={{ opacity: 0, top: 15 }} />
+            <Handle type="source" position={Position.Right} id={`${column.id}-right`} style={{ opacity: 0, top: 15 }} />
+          </React.Fragment>
+        ))}
+
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary/95 to-primary px-3 py-2 flex items-center gap-2 group rounded-t-[calc(var(--radius)-2px)] border-b border-primary/20">
+        <div className="bg-gradient-to-r from-primary/95 to-primary px-3 py-2 flex items-center gap-2 group rounded-t-[calc(var(--radius)-2px)] border-b border-primary/20 relative">
           <GripVertical className="h-3.5 w-3.5 text-primary-foreground/40 shrink-0 cursor-grab hover:text-primary-foreground/70 transition-colors" />
           {isEditingName ? (
             <Input
@@ -187,13 +207,20 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
           </div>
         </div>
 
+        {/* Description (Detailed level only) */}
+        {detailLevel === 'detailed' && table.description && (
+          <div className="px-3 py-1.5 bg-muted/30 border-b border-border/40 text-xs text-muted-foreground italic">
+            {table.description}
+          </div>
+        )}
+
         {/* Columns */}
         <CardContent className="p-0 flex flex-col">
-          {table.columns.map((column: Column) => (
+          {visibleColumns.map((column: Column) => (
             <div
               key={column.id}
               className={cn(
-                "flex items-center py-2.5 px-3 text-xs group/row relative border-b border-border/40 last:border-b-0 hover:bg-muted/40 transition-colors",
+                "flex flex-col py-2.5 px-3 text-xs group/row relative border-b border-border/40 last:border-b-0 hover:bg-muted/40 transition-colors",
                 column.primaryKey && "bg-amber-50/30 dark:bg-amber-950/20",
                 column.foreignKey && !column.primaryKey && "bg-blue-50/30 dark:bg-blue-950/10",
               )}
@@ -204,7 +231,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
                 position={Position.Left}
                 id={`${column.id}-left`}
                 className={cn(
-                  "w-2! h-2! border-[1.5px]! border-background! -left-1! z-10! ring-1 ring-transparent hover:ring-primary/50 hover:scale-125 transition-all opacity-0 group-hover/row:opacity-100",
+                  "w-2! h-2! border-[1.5px]! border-background! -left-1! z-10! ring-1 ring-transparent hover:ring-primary/50 hover:scale-125 transition-all top-[15px]! translate-y-0 opacity-0 group-hover/row:opacity-100",
                   column.primaryKey ? "bg-amber-500!" : column.foreignKey ? "bg-blue-500!" : "bg-muted-foreground/40!"
                 )}
               />
@@ -215,7 +242,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
                 position={Position.Right}
                 id={`${column.id}-right`}
                 className={cn(
-                  "w-2! h-2! border-[1.5px]! border-background! -right-1! z-10! ring-1 ring-transparent hover:ring-primary/50 hover:scale-125 transition-all opacity-0 group-hover/row:opacity-100",
+                  "w-2! h-2! border-[1.5px]! border-background! -right-1! z-10! ring-1 ring-transparent hover:ring-primary/50 hover:scale-125 transition-all top-[15px]! translate-y-0 opacity-0 group-hover/row:opacity-100",
                   column.primaryKey ? "bg-amber-500!" : column.foreignKey ? "bg-blue-500!" : "bg-muted-foreground/40!"
                 )}
               />
@@ -264,7 +291,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
                 </span>
               </div>
 
-              <div className="flex items-center gap-0.5 ml-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+              <div className="flex items-center gap-0.5 ml-1 absolute right-2 opacity-0 group-hover/row:opacity-100 transition-opacity bg-background/80 backdrop-blur rounded shadow-sm">
                 <Button
                   size="icon"
                   variant="ghost"
@@ -282,10 +309,28 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
+
+              {/* Detailed view extra info */}
+              {detailLevel === 'detailed' && (
+                <div className="mt-1 ml-1 text-muted-foreground space-y-0.5">
+                  {(column.increment || (column.foreignKey && column.foreignKey.tableId)) && (
+                    <div className="text-[10px] pl-1 font-mono text-primary/70">
+                      {column.increment && "auto_increment"}
+                      {column.increment && column.foreignKey && ", "}
+                      {column.foreignKey && `-> ${column.foreignKey.tableId}${column.foreignKey.columnId ? '.' + column.foreignKey.columnId.split('-')[0] : ''}`}
+                    </div>
+                  )}
+                  {column.description && (
+                    <div className="text-[10px] pl-1 italic">
+                      &quot;{column.description}&quot;
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
 
-          {isAddingColumn ? (
+          {detailLevel !== 'compact' && (isAddingColumn ? (
             <div className="p-2 border-t border-border/40 bg-muted/20 space-y-2 rounded-b-[calc(var(--radius)-2px)]">
               <div className="flex gap-1.5">
                 <Input
@@ -347,7 +392,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
               <Plus className="h-3 w-3 group-hover:scale-110 transition-transform" />
               Add column
             </button>
-          )}
+          ))}
         </CardContent>
       </Card>
 

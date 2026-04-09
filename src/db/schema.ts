@@ -10,6 +10,15 @@ export const schemas = sqliteTable('schemas', {
   version: integer('version').notNull().default(1),
 });
 
+export const schemaVersions = sqliteTable('schema_versions', {
+  id: text('id').primaryKey(),
+  schemaId: text('schema_id').notNull().references(() => schemas.id, { onDelete: 'cascade' }),
+  versionNumber: integer('version_number').notNull(),
+  label: text('label'),
+  snapshot: text('snapshot').notNull(), // Stored as JSON string
+  createdAt: text('created_at').notNull().default(sql`(CURRENT_TIMESTAMP)`),
+});
+
 export const tables = sqliteTable('tables', {
   id: text('id').primaryKey(),
   schemaId: text('schema_id').notNull().references(() => schemas.id, { onDelete: 'cascade' }),

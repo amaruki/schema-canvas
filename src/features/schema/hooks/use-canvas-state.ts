@@ -8,6 +8,8 @@ import type {
   Relationship
 } from '@/features/schema/types/schema.types';
 
+export type DetailLevel = 'compact' | 'keys-only' | 'standard' | 'detailed';
+
 interface CanvasState {
   // Dialog states
   isExportDialogOpen: boolean;
@@ -30,6 +32,10 @@ interface CanvasState {
   
   // Panel states
   connectionPanelTable: Table | null;
+  isVersionHistoryOpen: boolean;
+
+  // View Preferences
+  detailLevel: DetailLevel;
 
   // Actions
   openExportDialog: () => void;
@@ -56,6 +62,10 @@ interface CanvasState {
   showConnectionPanel: (table: Table) => void;
   hideConnectionPanel: () => void;
   
+  toggleVersionHistory: () => void;
+  
+  setDetailLevel: (level: DetailLevel) => void;
+  
   clearAllStates: () => void;
   resetCanvasState: () => void;
 }
@@ -76,6 +86,8 @@ export const useCanvasState = create<CanvasState>()(
       highlightedEdgeId: null,
       highlightedTableIds: new Set<string>(),
       connectionPanelTable: null,
+      isVersionHistoryOpen: false,
+      detailLevel: (typeof window !== 'undefined' ? localStorage.getItem('schemaCanvas_detailLevel') || 'standard' : 'standard') as DetailLevel,
 
       // Actions
       openExportDialog: () => set({ isExportDialogOpen: true }),
@@ -110,6 +122,15 @@ export const useCanvasState = create<CanvasState>()(
 
       showConnectionPanel: (table) => set({ connectionPanelTable: table }),
       hideConnectionPanel: () => set({ connectionPanelTable: null }),
+
+      toggleVersionHistory: () => set((state) => ({ isVersionHistoryOpen: !state.isVersionHistoryOpen })),
+
+      setDetailLevel: (level) => {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('schemaCanvas_detailLevel', level);
+        }
+        set({ detailLevel: level });
+      },
 
       clearAllStates: () => set({
         contextMenu: null,

@@ -1,5 +1,5 @@
-import { eq, and } from 'drizzle-orm';
-import { db, schemas, tables, columns, relationships } from '@/db';
+import { eq, and, desc, inArray } from 'drizzle-orm';
+import { db, schemas, tables, columns, relationships, schemaVersions } from '@/db';
 import type { Table, Relationship, Schema } from '@/features/schema/types/schema.types';
 
 export interface SchemaSummary {
@@ -256,4 +256,86 @@ export async function saveSchema(schema: {
       }).run();
     }
   });
+}
+
+// --- VERSIONING ---
+
+export interface SchemaVersionSummary {
+  id: string;
+  versionNumber: number;
+  label: string | null;
+  createdAt: string;
+}
+
+export async function getVersions(schemaId: string): Promise<SchemaVersionSummary[]> {
+  const versions = await db
+    .select({
+      id: schemaVersions.id,
+      versionNumber: schemaVersions.versionNumber,
+      label: schemaVersions.label,
+      createdAt: schemaVersions.createdAt,
+    })
+    .from(schemaVersions)
+    .where(eq(schemaVersions.schemaId, schemaId))
+    .orderBy(desc(schemaVersions.versionNumber));
+    
+  return versions;
+}
+
+export async function getVersionById(versionId: string): Promise<{ snapshot: string } | null> {
+  const result = await db
+    .select({ snapshot: schemaVersions.snapshot })
+    .from(schemaVersions)
+    .where(eq(schemaVersions.id, versionId))
+    .limit(1);
+    
+  if (result.length === 0) return null;
+  return result[0];
+}
+
+export async function createVersion(schemaId: string, label?: string): Promise<string> {
+  const schema = await getSchemaById(schemaId);
+  if (!schema) throw new Error('Schema not found');
+
+  const snapshot = JSON.stringify({
+    tables: schema.tables,
+    relationships: schema.relationships,
+  });
+
+  const latestVersion = await db
+    .select({ versionNumber: schemaVersions.versionNumber })
+    .from(schemaVersions)
+    .where(eq(schemaVersions.schemaId, schemaId))
+    .orderBy(desc(schemaVersions.versionNumber))
+    .limit(1);
+
+  const nextVersionNumber = latestVersion.length > 0 ? latestVersion[0].versionNumber + 1 : 1;
+  const newId = `version_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  db.transaction((tx) => {
+    tx.insert(schemaVersions).values({
+      id: newId,
+      schemaId,
+      versionNumber: nextVersionNumber,
+      label: label || `Version ${nextVersionNumber}`,
+      snapshot,
+    }).run();
+
+    // Enforce max 50 versions
+    const allVersions = tx
+      .select({ id: schemaVersions.id })
+      .from(schemaVersions)
+      .where(eq(schemaVersions.schemaId, schemaId))
+      .orderBy(desc(schemaVersions.versionNumber))
+      .all();
+
+    if (allVersions.length > 50) {
+      const toDelete = allVersions.slice(50).map((v) => v.id);
+      if (toDelete.length > 0) {
+        tx.delete(schemaVersions).where(inArray(schemaVersions.id, toDelete)).run();
+      }
+    }
+  });
+
+  return newId;
 }

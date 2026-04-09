@@ -25,7 +25,7 @@ import { findOpenSlot } from "@/lib/layout/smart-placement";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Download, Upload, RotateCcw, Settings, Database, Code2 } from "lucide-react";
+import { Plus, Download, Upload, RotateCcw, Settings, Database, Code2, Save, History } from "lucide-react";
 
 import { SchemaSelector } from "@/components/schema/schema-selector";
 import TableNode from "@/components/schema/table-node";
@@ -39,6 +39,9 @@ import ConnectionPanel from "@/components/schema/connection-panel";
 import RelationshipTypeSelector from "@/components/schema/relationship-type-selector";
 import LayoutPanel from "@/components/schema/layout-panel";
 import SchemaEditorPane from "@/components/schema/schema-editor-pane";
+import DetailLevelToggle from "@/components/schema/detail-level-toggle";
+import VersionHistoryPanel from "@/components/schema/version-history-panel";
+import TableSearch from "@/components/schema/table-search";
 
 const nodeTypes = { table: TableNode };
 const edgeTypes = { relationship: RelationshipEdge };
@@ -59,6 +62,8 @@ const SchemaCanvasContent: React.FC = () => {
   const clearSchema = useSchema((s) => s.clearSchema);
   const loadSchema = useSchema((s) => s.loadSchema);
   const exportSchema = useSchema((s) => s.exportSchema);
+  const saveVersion = useSchema((s) => s.saveVersion);
+  const activeSchemaId = useSchema((s) => s.activeSchemaId);
   
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const tableOps = useTableOperations();
@@ -79,6 +84,7 @@ const SchemaCanvasContent: React.FC = () => {
   const showConnectionPanel = useCanvasState((s) => s.showConnectionPanel);
   const highlightEdgeTemporarily = useCanvasState((s) => s.highlightEdgeTemporarily);
   const hideConnectionPanel = useCanvasState((s) => s.hideConnectionPanel);
+  const toggleVersionHistory = useCanvasState((s) => s.toggleVersionHistory);
   
   const hoveredNodeId = useCanvasState((s) => s.hoveredNodeId);
   const selectedNodeId = useCanvasState((s) => s.selectedNodeId);
@@ -97,6 +103,7 @@ const SchemaCanvasContent: React.FC = () => {
   const edgeContextMenu = useCanvasState((s) => s.edgeContextMenu);
   const connectionPanelTable = useCanvasState((s) => s.connectionPanelTable);
   const pendingConnection = useCanvasState((s) => s.pendingConnection);
+  const isVersionHistoryOpen = useCanvasState((s) => s.isVersionHistoryOpen);
   
   const { getNodes, setNodes, screenToFlowPosition, fitView } = useReactFlow();
 
@@ -166,6 +173,14 @@ const SchemaCanvasContent: React.FC = () => {
     const position = findOpenSlot(getNodes(), center);
     tableOps.createNewTable(position);
   }, [tableOps, getNodes, getCenterPosition]);
+
+  const handleSaveVersion = useCallback(async () => {
+    if (!activeSchemaId) return;
+    const label = prompt("Enter version label (optional):");
+    if (label !== null) {
+      await saveVersion(label);
+    }
+  }, [activeSchemaId, saveVersion]);
 
   const handleLayout = useCallback(
     (updatedTables: typeof tables) => {
@@ -339,10 +354,11 @@ const SchemaCanvasContent: React.FC = () => {
         const table = tableOps.findTable(selectedNodeId);
         if (table) handleDuplicateTable(table);
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSaveVersion(); }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodeId, handleAddTable, handleDeleteTable, handleDuplicateTable, handleExport, handleSettings, tableOps]);
+  }, [selectedNodeId, handleAddTable, handleDeleteTable, handleDuplicateTable, handleExport, handleSettings, tableOps, handleSaveVersion]);
 
   return (
     <div className="w-full h-screen bg-background">
@@ -350,32 +366,55 @@ const SchemaCanvasContent: React.FC = () => {
         {/* Toolbar */}
         <div className="px-4 py-2.5 bg-card border-b border-border">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded bg-primary flex items-center justify-center">
                   <span className="text-primary-foreground font-bold text-xs">SC</span>
                 </div>
                 <span className="text-sm font-semibold text-foreground">SchemaCanvas</span>
               </div>
+              
+              <div className="h-4 w-px bg-border mx-1" />
               <SchemaSelector />
-              <Button onClick={handleAddTable} size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
+              
+              <div className="h-4 w-px bg-border mx-1" />
+              <Button onClick={handleAddTable} size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 hidden sm:flex">
                 <Plus className="h-4 w-4 mr-1.5" />
                 Add Table
               </Button>
+              
+              <div className="ml-2 hidden lg:block">
+                <DetailLevelToggle />
+              </div>
             </div>
+            
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleImport}>
+              <Button variant="outline" size="sm" onClick={handleSaveVersion} title="Save Version (Ctrl+S)" className="hidden md:flex">
+                <Save className="h-4 w-4 mr-1.5 text-primary" />
+                Save Version
+              </Button>
+              <Button 
+                variant={isVersionHistoryOpen ? "secondary" : "outline"} 
+                size="sm" 
+                onClick={toggleVersionHistory}
+              >
+                <History className="h-4 w-4 mr-1.5" />
+                History
+              </Button>
+              
+              <div className="h-4 w-px bg-border mx-1 hidden md:block" />
+
+              <Button variant="outline" size="sm" onClick={handleImport} className="hidden xl:flex">
                 <Upload className="h-4 w-4 mr-1.5" />
                 Import
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExport}>
+              <Button variant="outline" size="sm" onClick={handleExport} className="hidden md:flex">
                 <Download className="h-4 w-4 mr-1.5" />
                 Export
               </Button>
-              <Button variant="outline" size="sm" onClick={handleClearSchema}>
-                <RotateCcw className="h-4 w-4 mr-1.5" />
-                Clear
-              </Button>
+              
+              <div className="h-4 w-px bg-border mx-1 hidden md:block" />
+
               <Button variant="outline" size="sm" onClick={handleSettings}>
                 <Settings className="h-4 w-4 mr-1.5" />
                 Settings
@@ -390,6 +429,18 @@ const SchemaCanvasContent: React.FC = () => {
                 DBML
               </Button>
             </div>
+          </div>
+        </div>
+
+        {/* Schema Stats Bar */}
+        <div className="px-4 py-1.5 bg-muted/40 border-b border-border text-[11px] text-muted-foreground flex justify-between items-center">
+          <div className="flex gap-4">
+            <span>{tables.length} tables</span>
+            <span>{relationships.length} relationships</span>
+            <span>{tables.reduce((acc, t) => acc + t.columns.length, 0)} columns</span>
+          </div>
+          <div className="hidden sm:block">
+            Tip: Press <kbd className="px-1 py-0.5 bg-background rounded border text-[10px] shadow-sm ml-1">Ctrl+P</kbd> to search tables
           </div>
         </div>
 
@@ -487,6 +538,7 @@ const SchemaCanvasContent: React.FC = () => {
         <ExportDialog isOpen={isExportDialogOpen} onClose={closeExportDialog} />
         <ImportDialog isOpen={isImportDialogOpen} onClose={closeImportDialog} />
         <SettingsDialog isOpen={isSettingsDialogOpen} onClose={closeSettingsDialog} />
+        <TableSearch />
 
         {/* Context Menus */}
         {contextMenu && (
@@ -540,6 +592,10 @@ const SchemaCanvasContent: React.FC = () => {
             onSelectType={handleSelectRelationshipType}
             onCancel={handleCancelRelationship}
           />
+        )}
+
+        {isVersionHistoryOpen && (
+          <VersionHistoryPanel onClose={toggleVersionHistory} />
         )}
       </div>
     </div>
