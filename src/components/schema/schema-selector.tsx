@@ -30,7 +30,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ChevronsUpDown, Plus, Copy, Trash2 } from 'lucide-react';
+import { ChevronsUpDown, Plus, Copy, Trash2, Pencil, Database, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export function SchemaSelector() {
@@ -156,57 +157,78 @@ export function SchemaSelector() {
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="min-w-[200px]" disabled={isLoading}>
-            <span className="truncate">{activeSchemaName}</span>
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 ml-1" />
+          <Button variant="ghost" className="min-w-[180px] max-w-[240px] px-2 h-8 font-semibold text-sm justify-between shadow-none hover:bg-muted/50" disabled={isLoading}>
+            <div className="flex items-center truncate">
+              <Database className="h-3.5 w-3.5 mr-2 text-muted-foreground shrink-0" />
+              <span className="truncate">{activeSchemaName}</span>
+            </div>
+            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50 ml-2" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[280px]">
+        <DropdownMenuContent align="start" className="w-[300px] p-2">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-2 pb-2 pt-1 mb-1 border-b border-border/50">
+            Workspace Schemas
+          </div>
           {schemaList.length === 0 ? (
             <div className="p-4 text-center text-sm text-muted-foreground">
               No schemas yet. Create one!
             </div>
           ) : (
-            <div className="max-h-[300px] overflow-y-auto">
+            <div className="max-h-[300px] overflow-y-auto scrollbar-thin py-1 pr-1">
               {schemaList.map((schema) => (
                 <DropdownMenuItem
                   key={schema.id}
                   onClick={() => handleSwitchSchema(schema.id)}
-                  className="flex items-center justify-between"
+                  className="flex items-center justify-between p-2.5 rounded-lg cursor-pointer mb-1 transition-colors hover:bg-muted/50 group"
                 >
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-medium truncate">
-                      {schema.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {schema.tableCount} tables, {schema.relationshipCount} relationships - {formatRelativeTime(schema.updatedAt)}
-                    </span>
+                  <div className="flex items-start min-w-0 flex-1">
+                    <Database className={cn("h-4 w-4 mr-3 shrink-0 mt-0.5 transition-colors", schema.id === activeSchemaId ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className={cn("font-semibold truncate text-[13px]", schema.id === activeSchemaId ? "text-primary" : "text-foreground")}>
+                        {schema.name}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground mt-0.5">
+                        {schema.tableCount} tables • {formatRelativeTime(schema.updatedAt)}
+                      </span>
+                    </div>
                   </div>
                   {schema.id === activeSchemaId && (
-                    <span className="text-xs text-primary font-medium ml-2 shrink-0">Active</span>
+                    <Check className="h-4 w-4 text-primary shrink-0 ml-2" />
                   )}
                 </DropdownMenuItem>
               ))}
             </div>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Schema
+          <DropdownMenuSeparator className="my-1 border-border/50" />
+          <DropdownMenuItem onClick={() => setCreateDialogOpen(true)} className="py-2 text-xs cursor-pointer group">
+            <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center mr-2 group-hover:bg-primary/20 transition-colors">
+              <Plus className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <span className="font-medium">New Schema</span>
           </DropdownMenuItem>
           {activeSchemaId && (
             <>
-              <DropdownMenuItem onClick={handleDuplicateSchema}>
-                <Copy className="h-4 w-4 mr-2" />
-                Duplicate Schema
+              <DropdownMenuItem onClick={handleStartRename} className="py-2 text-xs cursor-pointer group">
+                <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center mr-2 group-hover:bg-muted-foreground/20 transition-colors">
+                  <Pencil className="h-3.5 w-3.5 text-foreground" />
+                </div>
+                <span className="font-medium">Rename Schema</span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleDuplicateSchema} className="py-2 text-xs cursor-pointer group">
+                <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center mr-2 group-hover:bg-muted-foreground/20 transition-colors">
+                  <Copy className="h-3.5 w-3.5 text-foreground" />
+                </div>
+                <span className="font-medium">Duplicate Schema</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1 border-border/50" />
               <DropdownMenuItem
                 onClick={() => setDeleteDialogOpen(true)}
-                className="text-destructive focus:text-destructive"
+                className="py-2 text-xs text-destructive focus:text-destructive cursor-pointer group"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Current Schema
+                <div className="h-6 w-6 rounded-md bg-destructive/10 flex items-center justify-center mr-2 group-hover:bg-destructive/20 transition-colors">
+                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                </div>
+                <span className="font-medium">Delete Current Schema</span>
               </DropdownMenuItem>
             </>
           )}
