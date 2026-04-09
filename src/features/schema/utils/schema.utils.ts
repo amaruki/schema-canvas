@@ -103,7 +103,10 @@ export const validateColumn = (column: Partial<Column>): string[] => {
 
 // Strip React Flow handle suffixes from column IDs
 function stripHandleSuffix(id: string): string {
+  if (!id) return id;
   return id
+    .replace(/-left-target$/, '')
+    .replace(/-right-target$/, '')
     .replace(/-left$/, '')
     .replace(/-right$/, '');
 }

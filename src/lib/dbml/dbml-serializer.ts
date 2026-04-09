@@ -51,6 +51,8 @@ function q(name: string): string {
 // Strip React Flow handle suffixes to get the base column ID
 function stripHandleSuffix(id: string): string {
   return id
+    .replace(/-left-target$/, '')
+    .replace(/-right-target$/, '')
     .replace(/-left$/, '')
     .replace(/-right$/, '');
 }

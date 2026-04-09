@@ -9,6 +9,16 @@ export interface SchemaSummary {
   updatedAt: string;
 }
 
+// Strip React Flow handle suffixes from column IDs
+function stripHandleSuffix(id: string): string {
+  if (!id) return id;
+  return id
+    .replace(/-left-target$/, '')
+    .replace(/-right-target$/, '')
+    .replace(/-left$/, '')
+    .replace(/-right$/, '');
+}
+
 export async function apiGetAllSchemas(): Promise<SchemaSummary[]> {
   const res = await fetch('/api/schemas');
   if (!res.ok) throw new Error('Failed to fetch schemas');
@@ -28,6 +38,13 @@ export async function apiGetSchemaById(id: string): Promise<Schema> {
   data.tables = data.tables.map((table: any) => ({
     ...table,
     position: { x: table.positionX || 0, y: table.positionY || 0 },
+  }));
+
+  // Normalize relationship column IDs - strip React Flow handle suffixes
+  data.relationships = data.relationships.map((rel: any) => ({
+    ...rel,
+    sourceColumnId: stripHandleSuffix(rel.sourceColumnId),
+    targetColumnId: stripHandleSuffix(rel.targetColumnId),
   }));
 
   return data;
@@ -60,6 +77,11 @@ export async function apiSaveSchema(schema: {
         ...t,
         positionX: t.position.x,
         positionY: t.position.y,
+      })),
+      relationships: schema.relationships.map((r) => ({
+        ...r,
+        sourceColumnId: stripHandleSuffix(r.sourceColumnId),
+        targetColumnId: stripHandleSuffix(r.targetColumnId),
       })),
     }),
   });
