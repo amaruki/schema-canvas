@@ -29,7 +29,7 @@ export const DbmlEditor: React.FC<DbmlEditorProps> = ({ value, onChange, errors,
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
-  const [wordWrap, setWordWrap] = useState(true);
+  const [wordWrap, setWordWrap] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
   
@@ -403,7 +403,7 @@ export const DbmlEditor: React.FC<DbmlEditorProps> = ({ value, onChange, errors,
           ref={containerRef}
           className={cn(
             "flex-1 min-h-0 text-sm font-mono relative",
-            "[&_.cm-editor]:flex [&_.cm-editor]:flex-col [&_.cm-editor]:absolute [&_.cm-editor]:inset-0 [&_.cm-editor]:outline-none",
+            "[&_.cm-editor]:flex [&_.cm-editor]:flex-col [&_.cm-editor]:h-full [&_.cm-editor]:outline-none",
             "[&_.cm-scroller]:flex-1 [&_.cm-scroller]:overflow-auto [&_.cm-content]:pb-16",
             "[&_.cm-completionLabel]:text-foreground"
           )}
