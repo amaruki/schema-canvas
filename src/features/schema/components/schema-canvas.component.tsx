@@ -25,7 +25,14 @@ import { findOpenSlot } from "@/lib/layout/smart-placement";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Download, Upload, RotateCcw, Settings, Database, Code2, Save, History } from "lucide-react";
+import { Plus, Download, Upload, RotateCcw, Settings, Database, Code2, Save, History, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { SchemaSelector } from "@/components/schema/schema-selector";
 import TableNode from "@/components/schema/table-node";
@@ -364,71 +371,80 @@ const SchemaCanvasContent: React.FC = () => {
     <div className="w-full h-screen bg-background">
       <div className="flex flex-col h-full">
         {/* Toolbar */}
-        <div className="px-4 py-2.5 bg-card border-b border-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-xs">SC</span>
-                </div>
-                <span className="text-sm font-semibold text-foreground">SchemaCanvas</span>
+        <div className="px-4 py-2 bg-card border-b border-border shadow-sm z-10 flex flex-wrap items-center justify-between gap-3">
+          
+          {/* Left: Brand & File Selection */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 cursor-default">
+              <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center shadow-inner">
+                <span className="text-primary-foreground font-extrabold text-[10px]">SC</span>
               </div>
-              
-              <div className="h-4 w-px bg-border mx-1" />
-              <SchemaSelector />
-              
-              <div className="h-4 w-px bg-border mx-1" />
-              <Button onClick={handleAddTable} size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 hidden sm:flex">
-                <Plus className="h-4 w-4 mr-1.5" />
-                Add Table
-              </Button>
-              
-              <div className="ml-2 hidden lg:block">
-                <DetailLevelToggle />
-              </div>
+              <span className="text-sm font-bold tracking-tight text-foreground hidden md:inline-block">SchemaCanvas</span>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleSaveVersion} title="Save Version (Ctrl+S)" className="hidden md:flex">
-                <Save className="h-4 w-4 mr-1.5 text-primary" />
-                Save Version
-              </Button>
+            <div className="h-4 w-px bg-border mx-1 hidden sm:block" />
+            <SchemaSelector />
+          </div>
+
+          {/* Center: Essential Editing Tools */}
+          <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-lg border border-border shadow-sm mx-auto absolute left-1/2 -translate-x-1/2 sm:static sm:translate-x-0 hidden sm:flex">
+            <Button onClick={handleAddTable} size="sm" variant="ghost" className="h-7 px-3 text-xs font-semibold hover:bg-background">
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Add Table
+            </Button>
+            <div className="h-4 w-px bg-border/60 mx-0.5" />
+            <div className="hidden lg:block">
+              <DetailLevelToggle />
+            </div>
+          </div>
+          
+          {/* Right: History & Actions */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-muted/40 p-1 rounded-lg border border-border shadow-sm hidden md:flex">
               <Button 
-                variant={isVersionHistoryOpen ? "secondary" : "outline"} 
+                variant={isVersionHistoryOpen ? "secondary" : "ghost"} 
                 size="sm" 
                 onClick={toggleVersionHistory}
+                className="h-7 px-3 text-xs"
               >
-                <History className="h-4 w-4 mr-1.5" />
+                <History className="h-3.5 w-3.5 mr-1.5" />
                 History
               </Button>
-              
-              <div className="h-4 w-px bg-border mx-1 hidden md:block" />
-
-              <Button variant="outline" size="sm" onClick={handleImport} className="hidden xl:flex">
-                <Upload className="h-4 w-4 mr-1.5" />
-                Import
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport} className="hidden md:flex">
-                <Download className="h-4 w-4 mr-1.5" />
-                Export
-              </Button>
-              
-              <div className="h-4 w-px bg-border mx-1 hidden md:block" />
-
-              <Button variant="outline" size="sm" onClick={handleSettings}>
-                <Settings className="h-4 w-4 mr-1.5" />
-                Settings
-              </Button>
-              <Button
-                variant={isEditorOpen ? "default" : "outline"}
-                size="sm"
-                onClick={() => setIsEditorOpen((v) => !v)}
-                title="Toggle DBML editor"
-              >
-                <Code2 className="h-4 w-4 mr-1.5" />
-                DBML
+              <div className="h-4 w-px bg-border/60 mx-1" />
+              <Button variant="ghost" size="sm" onClick={handleSaveVersion} title="Save Version (Ctrl+S)" className="h-7 px-3 text-xs hover:bg-primary/10 hover:text-primary">
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                Save Version
               </Button>
             </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 w-9 p-0 shadow-sm">
+                  <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={handleImport} className="text-xs cursor-pointer"><Upload className="mr-2 h-3.5 w-3.5" /> Import DBML</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExport} className="text-xs cursor-pointer"><Download className="mr-2 h-3.5 w-3.5" /> Export Postgres SQL</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSettings} className="text-xs cursor-pointer"><Settings className="mr-2 h-3.5 w-3.5" /> Workspace Settings</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleClearSchema} className="text-xs text-destructive focus:text-destructive cursor-pointer">
+                  <RotateCcw className="mr-2 h-3.5 w-3.5" /> Clear Canvas
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button
+              variant={isEditorOpen ? "default" : "outline"}
+              size="sm"
+              className="h-9 shadow-sm"
+              onClick={() => setIsEditorOpen((v) => !v)}
+              title="Toggle DBML editor"
+            >
+              <Code2 className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline-block">DBML</span>
+            </Button>
           </div>
         </div>
 
