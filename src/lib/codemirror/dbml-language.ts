@@ -140,16 +140,15 @@ function findFoldRanges(state: EditorState) {
         if (endLine !== -1) break;
       }
       
-      // Add fold range (from after opening brace to before closing brace)
+      // Add fold range (from end of start line to start of end line)
       if (endLine !== -1 && endLine > startLine) {
-        // Calculate position after the opening brace
+        // Fold from the end of the line where { was found
         const startLineObj = doc.line(startLine + 1);
-        const from = startLineObj.from + openBraceCol + 1; // After the {
+        const from = startLineObj.to;
         
-        // Calculate position before the closing brace
+        // Fold until the start of the line where } is, or before the }
         const endLineObj = doc.line(endLine + 1);
-        const closeBraceCol = lines[endLine].indexOf('}');
-        const to = endLineObj.from + closeBraceCol; // Before the }
+        const to = endLineObj.from;
         
         if (to > from) {
           foldRanges.push({ from, to });
@@ -167,12 +166,13 @@ function findFoldRanges(state: EditorState) {
 }
 
 // Fold service for DBML
-function dbmlFoldService(state: EditorState, from: number, to: number) {
+function dbmlFoldService(state: EditorState, lineStart: number, lineEnd: number) {
   const foldRanges = findFoldRanges(state);
   
-  // Check if the cursor is within a foldable range
+  // Check if the current line starts a foldable range
   for (const range of foldRanges) {
-    if (from >= range.from && from <= range.to) {
+    // If the start of the foldable range falls within this line
+    if (range.from >= lineStart && range.from <= lineEnd) {
       return { from: range.from, to: range.to };
     }
   }
