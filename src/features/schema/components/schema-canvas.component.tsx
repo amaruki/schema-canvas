@@ -46,7 +46,7 @@ import ConnectionPanel from "@/components/schema/connection-panel";
 import RelationshipTypeSelector from "@/components/schema/relationship-type-selector";
 import LayoutPanel from "@/components/schema/layout-panel";
 import SchemaEditorPane from "@/components/schema/schema-editor-pane";
-import DetailLevelToggle from "@/components/schema/detail-level-toggle";
+
 import VersionHistoryPanel from "@/components/schema/version-history-panel";
 import TableSearch from "@/components/schema/table-search";
 
@@ -421,10 +421,6 @@ const SchemaCanvasContent: React.FC = () => {
               <Plus className="h-3.5 w-3.5 mr-1.5" />
               Add Table
             </Button>
-            <div className="h-4 w-px bg-border/60 mx-0.5" />
-            <div className="hidden lg:block">
-              <DetailLevelToggle />
-            </div>
           </div>
           
           {/* Right: History & Actions */}
@@ -537,14 +533,7 @@ const SchemaCanvasContent: React.FC = () => {
               className="bg-card border border-border rounded overflow-hidden"
             />
 
-            {/* Layout Panel */}
-            <Panel position="bottom-center" style={{ marginBottom: "8px" }}>
-              <LayoutPanel
-                tables={tables}
-                relationships={relationships}
-                onLayout={handleLayout}
-              />
-            </Panel>
+
 
             {/* Welcome Panel */}
             {reactFlowIntegration.nodes.length === 0 && (
@@ -579,6 +568,18 @@ const SchemaCanvasContent: React.FC = () => {
               </Panel>
             )}
           </ReactFlow>
+
+          {/* Bottom bar: Display mode + Layout - fixed overlay */}
+          {tables.length > 0 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+              <LayoutPanel
+                tables={tables}
+                relationships={relationships}
+                onLayout={handleLayout}
+                onFitView={() => fitView({ padding: 0.15, duration: 300 })}
+              />
+            </div>
+          )}
         </div>
         </SchemaEditorPane>
 
