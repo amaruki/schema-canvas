@@ -52,47 +52,47 @@ const dbmlParser: StreamParser<DBMLState> = {
     }
     
     // Handle keywords
-    if (stream.match(/Table|Enum|Ref|Project|Note|as/)) {
+    if (stream.match(/^(?:Table|Enum|Ref|Project|Note|as|ref)\b/i)) {
       return 'keyword';
     }
     
     // Handle modifiers
-    if (stream.match(/pk|not null|null|unique|increment/)) {
+    if (stream.match(/^(?:pk|not null|null|unique|increment)\b/i)) {
       return 'modifier';
     }
     
     // Handle default
-    if (stream.match(/default:/)) {
+    if (stream.match(/^default:/i)) {
       return 'operator';
     }
     
     // Handle data types
-    if (stream.match(/\b(int|integer|bigint|smallint|tinyint|serial|bigserial|varchar|char|text|boolean|bool|date|timestamp|timestamptz|time|timetz|interval|uuid|json|jsonb|xml|inet|macaddr|decimal|numeric|real|double precision|float|money|bit|varbit)\b/i)) {
+    if (stream.match(/^\b(?:int|integer|bigint|smallint|tinyint|serial|bigserial|varchar|char|text|email|phonenumber|string|boolean|bool|date|datetime|timestamp|timestamptz|time|timetz|interval|uuid|json|jsonb|xml|inet|macaddr|decimal|numeric|real|double precision|float|money|bit|varbit)\b/i)) {
       return 'type';
     }
     
     // Handle relation symbols
-    if (stream.match(/[<>-]/)) {
+    if (stream.match(/^[<>-]/)) {
       return 'operator';
     }
     
     // Handle numbers
-    if (stream.match(/\d+/)) {
+    if (stream.match(/^\d+/)) {
       return 'number';
     }
     
     // Handle identifiers
-    if (stream.match(/[a-zA-Z_][a-zA-Z0-9_]*/)) {
+    if (stream.match(/^[a-zA-Z_][a-zA-Z0-9_]*/)) {
       return 'variable';
     }
     
     // Handle dots
-    if (stream.match(/\./)) {
+    if (stream.match(/^\./)) {
       return 'operator';
     }
     
     // Handle braces
-    if (stream.match(/[{}]/)) {
+    if (stream.match(/^[{}]/)) {
       return 'bracket';
     }
     
