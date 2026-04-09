@@ -26,6 +26,7 @@ interface CanvasState {
   
   // Selection/Hover states
   selectedNodeId: string | null;
+  selectedNodeIds: Set<string>;
   hoveredNodeId: string | null;
   highlightedEdgeId: string | null;
   highlightedTableIds: Set<string>;
@@ -54,6 +55,9 @@ interface CanvasState {
   hideAllContextMenus: () => void;
   
   selectNode: (nodeId: string | null) => void;
+  toggleNodeSelection: (nodeId: string) => void;
+  selectAllNodes: (nodeIds: string[]) => void;
+  clearSelection: () => void;
   setHoveredNode: (nodeId: string | null) => void;
   highlightEdge: (edgeId: string | null) => void;
   highlightEdgeTemporarily: (edgeId: string, duration?: number) => void;
@@ -82,6 +86,7 @@ export const useCanvasState = create<CanvasState>()(
       contextMenu: null,
       edgeContextMenu: null,
       selectedNodeId: null,
+      selectedNodeIds: new Set<string>(),
       hoveredNodeId: null,
       highlightedEdgeId: null,
       highlightedTableIds: new Set<string>(),
@@ -111,7 +116,18 @@ export const useCanvasState = create<CanvasState>()(
       }),
       hideAllContextMenus: () => set({ contextMenu: null, edgeContextMenu: null }),
 
-      selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
+      selectNode: (nodeId) => set({ selectedNodeId: nodeId, selectedNodeIds: nodeId ? new Set([nodeId]) : new Set() }),
+      toggleNodeSelection: (nodeId) => set((state) => {
+        const next = new Set(state.selectedNodeIds);
+        if (next.has(nodeId)) {
+          next.delete(nodeId);
+        } else {
+          next.add(nodeId);
+        }
+        return { selectedNodeIds: next, selectedNodeId: next.size === 1 ? [...next][0] : null };
+      }),
+      selectAllNodes: (nodeIds) => set({ selectedNodeIds: new Set(nodeIds), selectedNodeId: null }),
+      clearSelection: () => set({ selectedNodeId: null, selectedNodeIds: new Set() }),
       setHoveredNode: (nodeId) => set({ hoveredNodeId: nodeId }),
       highlightEdge: (edgeId) => set({ highlightedEdgeId: edgeId }),
       highlightEdgeTemporarily: (edgeId, duration = 2000) => {
@@ -136,6 +152,7 @@ export const useCanvasState = create<CanvasState>()(
         contextMenu: null,
         edgeContextMenu: null,
         selectedNodeId: null,
+        selectedNodeIds: new Set<string>(),
         hoveredNodeId: null,
         highlightedEdgeId: null,
         highlightedTableIds: new Set<string>(),
@@ -151,6 +168,7 @@ export const useCanvasState = create<CanvasState>()(
         contextMenu: null,
         edgeContextMenu: null,
         selectedNodeId: null,
+        selectedNodeIds: new Set<string>(),
         hoveredNodeId: null,
         highlightedEdgeId: null,
         highlightedTableIds: new Set<string>(),

@@ -139,9 +139,11 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
 
 
   const isHighlighted = useCanvasState((state) => {
-    if (!state.hoveredNodeId && !state.selectedNodeId) return false;
+    if (!state.hoveredNodeId && state.selectedNodeIds.size === 0) return false;
     return state.highlightedTableIds.has(table.id);
   });
+
+  const isSelected = useCanvasState((state) => state.selectedNodeIds.has(table.id));
 
   const detailLevel = useCanvasState((state) => state.detailLevel);
 
@@ -162,7 +164,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
       <Card
         className={cn(
           "min-w-[240px] max-w-[340px] border rounded-xl shadow-lg bg-card/95 backdrop-blur-sm overflow-visible py-0 gap-0 transition-[opacity,transform,box-shadow,filter] duration-300",
-          selected ? "border-primary/60 shadow-primary/10 ring-2 ring-primary/20" : "border-border/60 shadow-black/5 dark:shadow-black/40",
+          isSelected ? "border-primary/60 shadow-primary/10 ring-2 ring-primary/20" : "border-border/60 shadow-black/5 dark:shadow-black/40",
           isHighlighted ? "opacity-100 scale-[1.01] shadow-xl z-20" : "opacity-60 grayscale-[0.2] blur-[0.2px] z-10"
         )}
       >

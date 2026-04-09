@@ -84,6 +84,9 @@ const SchemaCanvasContent: React.FC = () => {
   const openSettingsDialog = useCanvasState((s) => s.openSettingsDialog);
   const resetCanvasState = useCanvasState((s) => s.resetCanvasState);
   const selectNode = useCanvasState((s) => s.selectNode);
+  const toggleNodeSelection = useCanvasState((s) => s.toggleNodeSelection);
+  const selectAllNodes = useCanvasState((s) => s.selectAllNodes);
+  const clearSelection = useCanvasState((s) => s.clearSelection);
   const showNodeContextMenu = useCanvasState((s) => s.showNodeContextMenu);
   const showEdgeContextMenu = useCanvasState((s) => s.showEdgeContextMenu);
   const setHoveredNode = useCanvasState((s) => s.setHoveredNode);
@@ -95,6 +98,7 @@ const SchemaCanvasContent: React.FC = () => {
   
   const hoveredNodeId = useCanvasState((s) => s.hoveredNodeId);
   const selectedNodeId = useCanvasState((s) => s.selectedNodeId);
+  const selectedNodeIds = useCanvasState((s) => s.selectedNodeIds);
   const setHighlightedTableIds = useCanvasState((s) => s.setHighlightedTableIds);
   
   // Dialog Open States
@@ -116,20 +120,25 @@ const SchemaCanvasContent: React.FC = () => {
 
   // Compute Highlighted Tables O(1)
   useEffect(() => {
-    const activeId = hoveredNodeId || selectedNodeId;
-    if (!activeId) {
+    const activeIds = hoveredNodeId
+      ? new Set([hoveredNodeId])
+      : selectedNodeIds.size > 0
+      ? selectedNodeIds
+      : null;
+
+    if (!activeIds || activeIds.size === 0) {
       setHighlightedTableIds(new Set());
       return;
     }
-    
+
     // Add active + neighbors
-    const ids = new Set<string>([activeId]);
+    const ids = new Set<string>(activeIds);
     relationships.forEach(rel => {
-      if (rel.sourceTableId === activeId) ids.add(rel.targetTableId);
-      if (rel.targetTableId === activeId) ids.add(rel.sourceTableId);
+      if (activeIds.has(rel.sourceTableId)) ids.add(rel.targetTableId);
+      if (activeIds.has(rel.targetTableId)) ids.add(rel.sourceTableId);
     });
     setHighlightedTableIds(ids);
-  }, [hoveredNodeId, selectedNodeId, relationships, setHighlightedTableIds]);
+  }, [hoveredNodeId, selectedNodeId, selectedNodeIds, relationships, setHighlightedTableIds]);
 
   const reactFlowIntegration = useReactFlowIntegration(
     tables,
@@ -234,10 +243,14 @@ const SchemaCanvasContent: React.FC = () => {
 
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: any) => {
-      selectNode(node.id);
+      if (event.ctrlKey || event.metaKey) {
+        toggleNodeSelection(node.id);
+      } else {
+        selectNode(node.id);
+      }
       reactFlowIntegration.handleNodeClick(event, node);
     },
-    [selectNode, reactFlowIntegration]
+    [selectNode, toggleNodeSelection, reactFlowIntegration]
   );
 
   const handleNodeDoubleClick = useCallback(
@@ -281,17 +294,22 @@ const SchemaCanvasContent: React.FC = () => {
 
   const handlePaneClick = useCallback(() => {
     hideAllContextMenus();
-    selectNode(null);
+    clearSelection();
     setPendingConnectionData(null);
-  }, [hideAllContextMenus, selectNode, setPendingConnectionData]);
+  }, [hideAllContextMenus, clearSelection, setPendingConnectionData]);
 
   const handleDeleteTable = useCallback(
     (tableId: string) => {
       tableOps.deleteExistingTable(tableId);
-      selectNode(null);
+      clearSelection();
     },
-    [tableOps, selectNode]
+    [tableOps, clearSelection]
   );
+
+  const handleDeleteSelected = useCallback(() => {
+    selectedNodeIds.forEach((id) => tableOps.deleteExistingTable(id));
+    clearSelection();
+  }, [selectedNodeIds, tableOps, clearSelection]);
 
   const handleDuplicateTable = useCallback(
     (table: any) => tableOps.duplicateExistingTable(table),
@@ -355,17 +373,28 @@ const SchemaCanvasContent: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.key === ",") { e.preventDefault(); handleSettings(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "t") { e.preventDefault(); handleAddTable(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "e") { e.preventDefault(); handleExport(); }
-      if (e.key === "Delete" && selectedNodeId) { e.preventDefault(); handleDeleteTable(selectedNodeId); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSaveVersion(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        e.preventDefault();
+        selectAllNodes(tables.map((t) => t.id));
+      }
+      if (e.key === "Escape" && selectedNodeIds.size > 0) {
+        e.preventDefault();
+        clearSelection();
+      }
+      if (e.key === "Delete" && selectedNodeIds.size > 0) {
+        e.preventDefault();
+        handleDeleteSelected();
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === "d" && selectedNodeId) {
         e.preventDefault();
         const table = tableOps.findTable(selectedNodeId);
         if (table) handleDuplicateTable(table);
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSaveVersion(); }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodeId, handleAddTable, handleDeleteTable, handleDuplicateTable, handleExport, handleSettings, tableOps, handleSaveVersion]);
+  }, [selectedNodeId, selectedNodeIds, tables, selectAllNodes, clearSelection, handleAddTable, handleDeleteTable, handleDeleteSelected, handleDuplicateTable, handleExport, handleSettings, tableOps, handleSaveVersion]);
 
   return (
     <div className="w-full h-screen bg-background">
@@ -455,8 +484,11 @@ const SchemaCanvasContent: React.FC = () => {
             <span>{relationships.length} relationships</span>
             <span>{tables.reduce((acc, t) => acc + t.columns.length, 0)} columns</span>
           </div>
-          <div className="hidden sm:block">
-            Tip: Press <kbd className="px-1 py-0.5 bg-background rounded border text-[10px] shadow-sm ml-1">Ctrl+P</kbd> to search tables
+          <div className="hidden sm:flex items-center gap-2 text-[11px] text-muted-foreground">
+            {selectedNodeIds.size > 1 && (
+              <span className="text-primary font-medium">{selectedNodeIds.size} selected &mdash; </span>
+            )}
+            <span>Ctrl+Click to multi-select &bull; Ctrl+A to select all &bull; Delete to remove</span>
           </div>
         </div>
 
