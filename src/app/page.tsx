@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import SchemaCanvas from '@/components/schema/schema-canvas';
 import { useSchema } from '@/hooks/use-schema';
 import { apiGetAllSchemas, apiCreateSchema } from '@/lib/schema-api';
+import { migrateFromLocalStorage, checkMigrationStatus } from '@/db/migrate-localstorage';
 import { toast } from 'sonner';
 
 function SchemaInitializer() {
@@ -13,6 +14,14 @@ function SchemaInitializer() {
   useEffect(() => {
     async function init() {
       try {
+        const needsMigration = !(await checkMigrationStatus());
+        if (needsMigration) {
+          const result = await migrateFromLocalStorage();
+          if (result.migrated) {
+            toast.success('Successfully migrated your saved schema!');
+          }
+        }
+
         // Load schema list
         await loadSchemaList();
 

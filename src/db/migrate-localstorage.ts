@@ -1,4 +1,4 @@
-import { saveSchema, getAllSchemas } from '@/db/repositories/schema-repository';
+import { apiSaveSchema } from '@/lib/schema-api';
 
 const LOCAL_STORAGE_KEY = 'schema-canvas-storage';
 const MIGRATION_FLAG = 'schema-canvas-migrated';
@@ -39,7 +39,7 @@ export async function migrateFromLocalStorage(): Promise<MigrationResult> {
     // Create new schema from localStorage data
     const schemaId = `schema_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    await saveSchema({
+    await apiSaveSchema({
       id: schemaId,
       name: 'My First Schema',
       tables: data.tables || [],

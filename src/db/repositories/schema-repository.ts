@@ -180,10 +180,9 @@ export async function saveSchema(schema: {
   tables: Table[];
   relationships: Relationship[];
 }): Promise<void> {
-  await db.transaction(async (tx) => {
+  db.transaction((tx) => {
     // Upsert schema metadata
-    await tx
-      .insert(schemas)
+    tx.insert(schemas)
       .values({
         id: schema.id,
         name: schema.name,
@@ -197,15 +196,15 @@ export async function saveSchema(schema: {
           description: schema.description || null,
           updatedAt: new Date().toISOString(),
         },
-      });
+      }).run();
 
     // Delete existing tables and relationships for this schema
-    await tx.delete(relationships).where(eq(relationships.schemaId, schema.id));
-    await tx.delete(tables).where(eq(tables.schemaId, schema.id));
+    tx.delete(relationships).where(eq(relationships.schemaId, schema.id)).run();
+    tx.delete(tables).where(eq(tables.schemaId, schema.id)).run();
 
     // Insert tables
     for (const table of schema.tables) {
-      await tx.insert(tables).values({
+      tx.insert(tables).values({
         id: table.id,
         schemaId: schema.id,
         name: table.name,
@@ -216,11 +215,11 @@ export async function saveSchema(schema: {
         positionY: table.position.y,
         description: table.description || null,
         color: table.color || null,
-      });
+      }).run();
 
       // Insert columns
       for (const column of table.columns) {
-        await tx.insert(columns).values({
+        tx.insert(columns).values({
           id: column.id,
           tableId: table.id,
           name: column.name,
@@ -236,13 +235,13 @@ export async function saveSchema(schema: {
           foreignKeyColumnId: column.foreignKey?.columnId || null,
           foreignKeyOnDelete: column.foreignKey?.onDelete || null,
           foreignKeyOnUpdate: column.foreignKey?.onUpdate || null,
-        });
+        }).run();
       }
     }
 
     // Insert relationships
     for (const rel of schema.relationships) {
-      await tx.insert(relationships).values({
+      tx.insert(relationships).values({
         id: rel.id,
         schemaId: schema.id,
         sourceTableId: rel.sourceTableId,
@@ -254,7 +253,7 @@ export async function saveSchema(schema: {
         name: rel.name || null,
         onDelete: rel.onDelete || null,
         onUpdate: rel.onUpdate || null,
-      });
+      }).run();
     }
   });
 }

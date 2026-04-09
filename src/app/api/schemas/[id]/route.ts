@@ -40,7 +40,8 @@ export async function PUT(
 
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to update schema' }, { status: 500 });
+    console.error('Server error updating schema:', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update schema' }, { status: 500 });
   }
 }
 
