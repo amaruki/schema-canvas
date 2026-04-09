@@ -16,6 +16,35 @@ import {
   type SchemaVersionSummary,
 } from '@/lib/schema-api';
 
+// --- localStorage position cache ---
+type PositionMap = Record<string, { x: number; y: number }>;
+
+function positionKey(schemaId: string) {
+  return `schema-positions-${schemaId}`;
+}
+
+function loadPositions(schemaId: string): PositionMap {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(positionKey(schemaId));
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePositions(schemaId: string, tables: Table[]) {
+  if (typeof window === 'undefined') return;
+  const map: PositionMap = {};
+  tables.forEach((t) => { map[t.id] = t.position; });
+  localStorage.setItem(positionKey(schemaId), JSON.stringify(map));
+}
+
+function applyPositions(tables: Table[], positions: PositionMap): Table[] {
+  if (Object.keys(positions).length === 0) return tables;
+  return tables.map((t) => positions[t.id] ? { ...t, position: positions[t.id] } : t);
+}
+
 interface SchemaState {
   // State
   tables: Table[];
@@ -123,6 +152,14 @@ export const useSchema = create<SchemaState>()(
           ),
           isDirty: true,
         }));
+
+        // Persist position to localStorage immediately on drag-end
+        if (updates.position) {
+          const state = get();
+          if (state.activeSchemaId) {
+            savePositions(state.activeSchemaId, get().tables);
+          }
+        }
 
         scheduleAutoSave(get);
       },
@@ -244,8 +281,12 @@ export const useSchema = create<SchemaState>()(
 
       // Schema actions
       loadSchema: (schema) => {
+        const schemaId = get().activeSchemaId;
+        const tables = schemaId
+          ? applyPositions(schema.tables, loadPositions(schemaId))
+          : schema.tables;
         set({
-          tables: schema.tables,
+          tables,
           relationships: schema.relationships,
           selectedTableId: null,
           selectedRelationshipId: null,
@@ -299,8 +340,9 @@ export const useSchema = create<SchemaState>()(
         try {
           const schema = await apiGetSchemaById(state.activeSchemaId);
           if (schema) {
+            const positions = loadPositions(state.activeSchemaId);
             set({
-              tables: schema.tables,
+              tables: applyPositions(schema.tables, positions),
               relationships: schema.relationships,
               activeSchemaName: schema.name,
               selectedTableId: null,
@@ -331,8 +373,9 @@ export const useSchema = create<SchemaState>()(
         try {
           const schema = await apiGetSchemaById(id);
           if (schema) {
+            const positions = loadPositions(id);
             set({
-              tables: schema.tables,
+              tables: applyPositions(schema.tables, positions),
               relationships: schema.relationships,
               activeSchemaName: schema.name,
               selectedTableId: null,
@@ -455,6 +498,10 @@ export const useSchema = create<SchemaState>()(
         set({ isLoading: true });
         try {
           const result = await apiRestoreVersion(state.activeSchemaId, versionId);
+          // Clear cached positions so restored layout from snapshot is used
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(positionKey(state.activeSchemaId));
+          }
           set({
             tables: result.tables,
             relationships: result.relationships,
