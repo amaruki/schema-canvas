@@ -66,39 +66,65 @@ export function serializeToDbml(tables: Table[], relationships: Relationship[]):
 
   const drawnInlineRefIds = new Set<string>();
 
-  const tableBlocks = tables.map((table) => {
-    // Find inline relationships for this table
-    const inlineRefs = new Map<string, string[]>(); // columnId -> array of inline ref strings
-    relationships.forEach(rel => {
-      if (!rel.isInline || drawnInlineRefIds.has(rel.id)) return;
-      
-      const srcTable = tableIdToName.get(rel.sourceTableId);
-      const tgtTable = tableIdToName.get(rel.targetTableId);
-      const srcCol = colIdToName.get(stripHandleSuffix(rel.sourceColumnId));
-      const tgtCol = colIdToName.get(stripHandleSuffix(rel.targetColumnId));
-      
-      if (!srcTable || !tgtTable || !srcCol || !tgtCol) return;
+  // Pre-calculate inline refs per table and column
+  const inlineRefsByTable = new Map<string, Map<string, string[]>>();
+  tables.forEach(t => inlineRefsByTable.set(t.id, new Map()));
 
-      // Prefer attaching to source table, unless target aligns better
-      if (rel.sourceTableId === table.id) {
-        const arr = inlineRefs.get(stripHandleSuffix(rel.sourceColumnId)) || [];
-        arr.push(`${refNotation(rel.type)} ${q(tgtTable)}.${q(tgtCol)}`);
-        inlineRefs.set(stripHandleSuffix(rel.sourceColumnId), arr);
-        drawnInlineRefIds.add(rel.id);
-      } else if (rel.targetTableId === table.id) {
-        // Reverse relation if attaching to target
-        let revType = '>';
-        if (rel.type === 'one-to-many') revType = '>';
-        else if (rel.type === 'many-to-one') revType = '<';
-        else if (rel.type === 'one-to-one') revType = '-';
-        else if (rel.type === 'many-to-many') revType = '<>';
-        
-        const arr = inlineRefs.get(stripHandleSuffix(rel.targetColumnId)) || [];
-        arr.push(`${revType} ${q(srcTable)}.${q(srcCol)}`);
-        inlineRefs.set(stripHandleSuffix(rel.targetColumnId), arr);
-        drawnInlineRefIds.add(rel.id);
-      }
-    });
+  relationships.forEach(rel => {
+    if (!rel.isInline || drawnInlineRefIds.has(rel.id)) return;
+    
+    const srcTable = tables.find(t => t.id === rel.sourceTableId);
+    const tgtTable = tables.find(t => t.id === rel.targetTableId);
+    if (!srcTable || !tgtTable) return;
+    
+    const srcCol = srcTable.columns.find(c => c.id === stripHandleSuffix(rel.sourceColumnId));
+    const tgtCol = tgtTable.columns.find(c => c.id === stripHandleSuffix(rel.targetColumnId));
+    if (!srcCol || !tgtCol) return;
+
+    // Prefer attaching to the column that does NOT have the [pk] constraint,
+    // or fallback to source table.
+    let attachToSrc = true;
+    if (tgtCol.primaryKey && !srcCol.primaryKey) {
+        attachToSrc = true;  // Source is FK, Target is PK
+    } else if (srcCol.primaryKey && !tgtCol.primaryKey) {
+        attachToSrc = false; // Source is PK, Target is FK
+    } else {
+        // If neither or both are PK, we prefer the "Many" side.
+        // rel.type = 'one-to-many' -> source is One, target is Many. Attach to Target.
+        // rel.type = 'many-to-one' -> source is Many, target is One. Attach to Source.
+        if (rel.type === 'one-to-many') attachToSrc = false;
+        else if (rel.type === 'many-to-one') attachToSrc = true;
+        else attachToSrc = true; // Default to source
+    }
+
+    if (attachToSrc) {
+        const refs = inlineRefsByTable.get(srcTable.id);
+        if (refs) {
+          const arr = refs.get(srcCol.id) || [];
+          arr.push(`${refNotation(rel.type)} ${q(tgtTable.name)}.${q(tgtCol.name)}`);
+          refs.set(srcCol.id, arr);
+          drawnInlineRefIds.add(rel.id);
+        }
+    } else {
+        const refs = inlineRefsByTable.get(tgtTable.id);
+        if (refs) {
+          const arr = refs.get(tgtCol.id) || [];
+          
+          let revType = '>';
+          if (rel.type === 'one-to-many') revType = '>';
+          else if (rel.type === 'many-to-one') revType = '<';
+          else if (rel.type === 'one-to-one') revType = '-';
+          else if (rel.type === 'many-to-many') revType = '<>';
+          
+          arr.push(`${revType} ${q(srcTable.name)}.${q(srcCol.name)}`);
+          refs.set(tgtCol.id, arr);
+          drawnInlineRefIds.add(rel.id);
+        }
+    }
+  });
+
+  const tableBlocks = tables.map((table) => {
+    const inlineRefs = inlineRefsByTable.get(table.id)!;
 
     const cols = table.columns.map((col) => {
       return `  ${q(col.name)} ${col.type}${columnConstraints(col, inlineRefs.get(col.id))}`;
