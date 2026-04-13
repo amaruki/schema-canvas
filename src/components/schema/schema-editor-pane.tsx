@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useTheme } from 'next-themes';
-import { parseDbml, type ParseError } from '@/lib/dbml/dbml-parser';
-import { serializeToDbml } from '@/lib/dbml/dbml-serializer';
-import type { Table, Relationship } from '@/features/schema/types/schema.types';
-import type { Node } from '@xyflow/react';
-import DbmlEditor from './dbml-editor';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useTheme } from "next-themes";
+import { parseDbml, type ParseError } from "@/lib/dbml/dbml-parser";
+import { serializeToDbml } from "@/lib/dbml/dbml-serializer";
+import type { Table, Relationship } from "@/features/schema/types/schema.types";
+import type { Node } from "@xyflow/react";
+import DbmlEditor from "./dbml-editor";
 
 interface SchemaEditorPaneProps {
   isOpen: boolean;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
   children: React.ReactNode;
   tables: Table[];
   relationships: Relationship[];
@@ -20,6 +22,8 @@ interface SchemaEditorPaneProps {
 
 export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
   isOpen,
+  isCollapsed,
+  onToggleCollapse,
   children,
   tables,
   relationships,
@@ -28,8 +32,8 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
   getCenterPosition,
 }) => {
   const { resolvedTheme } = useTheme();
-  const [splitRatio, setSplitRatio] = useState(35);
-  const [editorText, setEditorText] = useState('');
+  const [splitRatio, setSplitRatio] = useState(25);
+  const [editorText, setEditorText] = useState("");
   const [errors, setErrors] = useState<ParseError[]>([]);
   const isSyncingFromCanvas = useRef(false);
   // Counts pending editor-initiated store updates so we skip the echo-back sync
@@ -38,21 +42,21 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
   const isDragging = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const prevSchemaFingerprint = useRef('');
+  const prevSchemaFingerprint = useRef("");
 
   // Canvas -> Text: serialize when tables/relationships change
   useEffect(() => {
     // Fingerprint schema to skip position-only changes
     const fingerprint = JSON.stringify({
-      tables: tables.map(t => ({ 
-        id: t.id, 
-        name: t.name, 
+      tables: tables.map((t) => ({
+        id: t.id,
+        name: t.name,
         alias: t.alias,
         note: t.note,
         headerColor: t.headerColor,
-        columns: t.columns 
+        columns: t.columns,
       })),
-      relationships
+      relationships,
     });
 
     // Skip the sync that echoes back our own editor-initiated update
@@ -95,7 +99,7 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
         }
       }, 600);
     },
-    [getNodes, tables, onSchemaChange, getCenterPosition]
+    [getNodes, tables, onSchemaChange, getCenterPosition],
   );
 
   // Divider drag
@@ -112,12 +116,12 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
 
     const onMouseUp = () => {
       isDragging.current = false;
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
     };
 
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
   }, []);
 
   if (!isOpen) {
@@ -127,28 +131,35 @@ export const SchemaEditorPane: React.FC<SchemaEditorPaneProps> = ({
   return (
     <div ref={containerRef} className="flex flex-1 overflow-hidden min-h-0">
       {/* Editor pane */}
-      <div
-        style={{ width: `${splitRatio}%` }}
-        className="flex flex-col min-h-0 border-r border-border overflow-hidden"
-      >
-        <DbmlEditor
-          value={editorText}
-          onChange={handleEditorChange}
-          errors={errors}
-          theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
-        />
-      </div>
+      {!isCollapsed && (
+        <>
+          <div
+            style={{ width: `${splitRatio}%` }}
+            className="flex flex-col min-h-0 border-r border-border overflow-hidden"
+          >
+            <DbmlEditor
+              value={editorText}
+              onChange={handleEditorChange}
+              errors={errors}
+              theme={resolvedTheme === "dark" ? "dark" : "light"}
+            />
+          </div>
 
-      {/* Divider */}
-      <div
-        className="w-1 bg-border hover:bg-primary cursor-col-resize shrink-0 transition-colors"
-        onMouseDown={handleDividerMouseDown}
-        role="separator"
-        aria-orientation="vertical"
-      />
+          {/* Divider */}
+          <div
+            className="w-1 bg-border hover:bg-primary cursor-col-resize shrink-0 transition-colors"
+            onMouseDown={handleDividerMouseDown}
+            role="separator"
+            aria-orientation="vertical"
+          />
+        </>
+      )}
 
       {/* Canvas pane */}
-      <div style={{ flex: 1 }} className="flex flex-col min-h-0 overflow-hidden">
+      <div
+        style={{ flex: 1 }}
+        className="flex flex-col min-h-0 overflow-hidden"
+      >
         {children}
       </div>
     </div>
