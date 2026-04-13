@@ -1,6 +1,17 @@
-import { eq, and, desc, inArray } from 'drizzle-orm';
-import { db, schemas, tables, columns, relationships, schemaVersions } from '@/db';
-import type { Table, Relationship, Schema } from '@/features/schema/types/schema.types';
+import { eq, and, desc, inArray } from "drizzle-orm";
+import {
+  db,
+  schemas,
+  tables,
+  columns,
+  relationships,
+  schemaVersions,
+} from "@/db";
+import type {
+  Table,
+  Relationship,
+  Schema,
+} from "@/features/schema/types/schema.types";
 
 export interface SchemaSummary {
   id: string;
@@ -11,8 +22,12 @@ export interface SchemaSummary {
   updatedAt: string;
 }
 
-export async function getAllSchemas(): Promise<SchemaSummary[]> {
-  const allSchemas = await db.select().from(schemas).orderBy(schemas.updatedAt);
+export async function getAllSchemas(userId: string): Promise<SchemaSummary[]> {
+  const allSchemas = await db
+    .select()
+    .from(schemas)
+    .where(eq(schemas.userId, userId))
+    .orderBy(schemas.updatedAt);
 
   const result: SchemaSummary[] = [];
 
@@ -33,18 +48,26 @@ export async function getAllSchemas(): Promise<SchemaSummary[]> {
       description: s.description,
       tableCount: tableCount.length,
       relationshipCount: relationshipCount.length,
-      updatedAt: s.updatedAt,
+      updatedAt:
+        s.updatedAt instanceof Date ? s.updatedAt.toISOString() : s.updatedAt,
     });
   }
 
   return result;
 }
 
-export async function getSchemaById(id: string): Promise<Schema | null> {
+export async function getSchemaById(
+  id: string,
+  userId?: string,
+): Promise<Schema | null> {
+  const whereClause = userId
+    ? and(eq(schemas.id, id), eq(schemas.userId, userId))
+    : eq(schemas.id, id);
+
   const schemaResult = await db
     .select()
     .from(schemas)
-    .where(eq(schemas.id, id))
+    .where(whereClause)
     .limit(1);
 
   if (schemaResult.length === 0) return null;
@@ -126,13 +149,15 @@ export async function getSchemaById(id: string): Promise<Schema | null> {
 }
 
 export async function createSchema(
+  userId: string,
   name: string,
-  description?: string
+  description?: string,
 ): Promise<string> {
   const id = `schema_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   await db.insert(schemas).values({
     id,
+    userId,
     name,
     description: description || null,
   });
@@ -142,29 +167,46 @@ export async function createSchema(
 
 export async function updateSchemaMetadata(
   id: string,
-  updates: { name?: string; description?: string }
+  userId: string,
+  updates: { name?: string; description?: string },
 ): Promise<void> {
-  await db
+  const result = await db
     .update(schemas)
     .set({
       ...updates,
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date(),
     })
-    .where(eq(schemas.id, id));
+    .where(and(eq(schemas.id, id), eq(schemas.userId, userId)));
+
+  if (result.rowCount === 0)
+    throw new Error("Schema not found or access denied");
 }
 
-export async function deleteSchema(id: string): Promise<void> {
-  await db.delete(schemas).where(eq(schemas.id, id));
+export async function deleteSchema(id: string, userId: string): Promise<void> {
+  const result = await db
+    .delete(schemas)
+    .where(and(eq(schemas.id, id), eq(schemas.userId, userId)));
+
+  if (result.rowCount === 0)
+    throw new Error("Schema not found or access denied");
 }
 
-export async function duplicateSchema(id: string): Promise<string> {
-  const source = await getSchemaById(id);
-  if (!source) throw new Error('Schema not found');
+export async function duplicateSchema(
+  id: string,
+  userId: string,
+): Promise<string> {
+  const source = await getSchemaById(id, userId);
+  if (!source) throw new Error("Schema not found or access denied");
 
-  const newId = await createSchema(`${source.name} (Copy)`, source.description);
+  const newId = await createSchema(
+    userId,
+    `${source.name} (Copy)`,
+    source.description,
+  );
 
   await saveSchema({
     id: newId,
+    userId,
     name: source.name,
     tables: source.tables,
     relationships: source.relationships,
@@ -175,36 +217,39 @@ export async function duplicateSchema(id: string): Promise<string> {
 
 export async function saveSchema(schema: {
   id: string;
+  userId: string;
   name: string;
   description?: string;
   tables: Table[];
   relationships: Relationship[];
 }): Promise<void> {
-  db.transaction((tx) => {
-    // Upsert schema metadata
-    tx.insert(schemas)
+  await db.transaction(async (tx) => {
+    // Insert with userId, or update if exists
+    await tx
+      .insert(schemas)
       .values({
         id: schema.id,
+        userId: schema.userId,
         name: schema.name,
         description: schema.description || null,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
       })
       .onConflictDoUpdate({
         target: schemas.id,
         set: {
           name: schema.name,
           description: schema.description || null,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(),
         },
-      }).run();
+      });
 
     // Delete existing tables and relationships for this schema
-    tx.delete(relationships).where(eq(relationships.schemaId, schema.id)).run();
-    tx.delete(tables).where(eq(tables.schemaId, schema.id)).run();
+    await tx.delete(relationships).where(eq(relationships.schemaId, schema.id));
+    await tx.delete(tables).where(eq(tables.schemaId, schema.id));
 
     // Insert tables
     for (const table of schema.tables) {
-      tx.insert(tables).values({
+      await tx.insert(tables).values({
         id: table.id,
         schemaId: schema.id,
         name: table.name,
@@ -215,11 +260,11 @@ export async function saveSchema(schema: {
         positionY: table.position.y,
         description: table.description || null,
         color: table.color || null,
-      }).run();
+      });
 
       // Insert columns
       for (const column of table.columns) {
-        tx.insert(columns).values({
+        await tx.insert(columns).values({
           id: column.id,
           tableId: table.id,
           name: column.name,
@@ -235,13 +280,13 @@ export async function saveSchema(schema: {
           foreignKeyColumnId: column.foreignKey?.columnId || null,
           foreignKeyOnDelete: column.foreignKey?.onDelete || null,
           foreignKeyOnUpdate: column.foreignKey?.onUpdate || null,
-        }).run();
+        });
       }
     }
 
     // Insert relationships
     for (const rel of schema.relationships) {
-      tx.insert(relationships).values({
+      await tx.insert(relationships).values({
         id: rel.id,
         schemaId: schema.id,
         sourceTableId: rel.sourceTableId,
@@ -253,7 +298,7 @@ export async function saveSchema(schema: {
         name: rel.name || null,
         onDelete: rel.onDelete || null,
         onUpdate: rel.onUpdate || null,
-      }).run();
+      });
     }
   });
 }
@@ -267,7 +312,20 @@ export interface SchemaVersionSummary {
   createdAt: string;
 }
 
-export async function getVersions(schemaId: string): Promise<SchemaVersionSummary[]> {
+export async function getVersions(
+  schemaId: string,
+  userId: string,
+): Promise<SchemaVersionSummary[]> {
+  // Verify schema ownership first
+  const schemaCheck = await db
+    .select({ id: schemas.id })
+    .from(schemas)
+    .where(and(eq(schemas.id, schemaId), eq(schemas.userId, userId)))
+    .limit(1);
+
+  if (schemaCheck.length === 0)
+    throw new Error("Schema not found or access denied");
+
   const versions = await db
     .select({
       id: schemaVersions.id,
@@ -278,24 +336,40 @@ export async function getVersions(schemaId: string): Promise<SchemaVersionSummar
     .from(schemaVersions)
     .where(eq(schemaVersions.schemaId, schemaId))
     .orderBy(desc(schemaVersions.versionNumber));
-    
-  return versions;
+
+  return versions.map((v) => ({
+    ...v,
+    createdAt:
+      v.createdAt instanceof Date ? v.createdAt.toISOString() : v.createdAt,
+  }));
 }
 
-export async function getVersionById(versionId: string): Promise<{ snapshot: string } | null> {
+export async function getVersionById(
+  versionId: string,
+  userId: string,
+): Promise<{ snapshot: string } | null> {
+  // Verify ownership through schema
   const result = await db
-    .select({ snapshot: schemaVersions.snapshot })
+    .select({
+      snapshot: schemaVersions.snapshot,
+      schemaId: schemaVersions.schemaId,
+    })
     .from(schemaVersions)
-    .where(eq(schemaVersions.id, versionId))
+    .innerJoin(schemas, eq(schemaVersions.schemaId, schemas.id))
+    .where(and(eq(schemaVersions.id, versionId), eq(schemas.userId, userId)))
     .limit(1);
-    
+
   if (result.length === 0) return null;
   return result[0];
 }
 
-export async function createVersion(schemaId: string, label?: string): Promise<string> {
-  const schema = await getSchemaById(schemaId);
-  if (!schema) throw new Error('Schema not found');
+export async function createVersion(
+  schemaId: string,
+  userId: string,
+  label?: string,
+): Promise<string> {
+  const schema = await getSchemaById(schemaId, userId);
+  if (!schema) throw new Error("Schema not found or access denied");
 
   const snapshot = JSON.stringify({
     tables: schema.tables,
@@ -309,30 +383,32 @@ export async function createVersion(schemaId: string, label?: string): Promise<s
     .orderBy(desc(schemaVersions.versionNumber))
     .limit(1);
 
-  const nextVersionNumber = latestVersion.length > 0 ? latestVersion[0].versionNumber + 1 : 1;
+  const nextVersionNumber =
+    latestVersion.length > 0 ? latestVersion[0].versionNumber + 1 : 1;
   const newId = `version_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-  db.transaction((tx) => {
-    tx.insert(schemaVersions).values({
+  await db.transaction(async (tx) => {
+    await tx.insert(schemaVersions).values({
       id: newId,
       schemaId,
       versionNumber: nextVersionNumber,
       label: label || `Version ${nextVersionNumber}`,
       snapshot,
-    }).run();
+    });
 
     // Enforce max 50 versions
-    const allVersions = tx
+    const allVersions = await tx
       .select({ id: schemaVersions.id })
       .from(schemaVersions)
       .where(eq(schemaVersions.schemaId, schemaId))
-      .orderBy(desc(schemaVersions.versionNumber))
-      .all();
+      .orderBy(desc(schemaVersions.versionNumber));
 
     if (allVersions.length > 50) {
       const toDelete = allVersions.slice(50).map((v) => v.id);
       if (toDelete.length > 0) {
-        tx.delete(schemaVersions).where(inArray(schemaVersions.id, toDelete)).run();
+        await tx
+          .delete(schemaVersions)
+          .where(inArray(schemaVersions.id, toDelete));
       }
     }
   });
