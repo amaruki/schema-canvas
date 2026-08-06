@@ -39,6 +39,16 @@
   --font-sans: var(--font-geist-sans, Inter, sans-serif);
   --font-mono: var(--font-geist-mono, JetBrains Mono, monospace);
   --radius: 0.375rem;
+  --transition-fast: 150ms ease;
+  --transition-medium: 300ms ease;
+  --schema-edge-color: oklch(0.551 0.0234 264.3637);
+  --schema-edge-hover: oklch(0.6231 0.188 259.8145);
+  --schema-edge-selected: oklch(0.6231 0.188 259.8145);
+  --schema-handle-size: 8px;
+  --schema-handle-shadow: 0 1px 3px oklch(0 0 0 / 0.2);
+  --schema-handle-target: #10b981;
+  --schema-selection-bg: oklch(0.6231 0.188 259.8145 / 0.1);
+  --schema-selection-border: oklch(0.6231 0.188 259.8145);
   --shadow-x: 0;
   --shadow-y: 1px;
   --shadow-blur: 3px;
@@ -93,6 +103,16 @@
   --font-sans: var(--font-geist-sans, Inter, sans-serif);
   --font-mono: var(--font-geist-mono, JetBrains Mono, monospace);
   --radius: 0.375rem;
+  --transition-fast: 150ms ease;
+  --transition-medium: 300ms ease;
+  --schema-edge-color: oklch(0.6231 0.05 264.3637);
+  --schema-edge-hover: oklch(0.6231 0.188 259.8145);
+  --schema-edge-selected: oklch(0.6231 0.188 259.8145);
+  --schema-handle-size: 8px;
+  --schema-handle-shadow: 0 1px 3px oklch(0 0 0 / 0.2);
+  --schema-handle-target: #10b981;
+  --schema-selection-bg: oklch(0.6231 0.188 259.8145 / 0.1);
+  --schema-selection-border: oklch(0.6231 0.188 259.8145);
   --shadow-x: 0;
   --shadow-y: 1px;
   --shadow-blur: 3px;
@@ -221,7 +241,7 @@ body {
 }
 
 .react-flow__handle.target {
-  background: #10b981;
+  background: var(--schema-handle-target);
 }
 
 .react-flow__controls {
@@ -263,8 +283,8 @@ body {
 
 /* Custom selection styles */
 .react-flow__selection {
-  background: rgba(59, 130, 246, 0.1);
-  border: 2px solid #3b82f6;
+  background: var(--schema-selection-bg);
+  border: 2px solid var(--schema-selection-border);
 }
 
 /* Smooth scrolling */
@@ -298,15 +318,15 @@ body {
 }
 
 .dark .react-flow__edge {
-  stroke: #60a5fa;
+  stroke: var(--schema-edge-color);
 }
 
 .dark .react-flow__edge:hover {
-  stroke: #93c5fd;
+  stroke: var(--schema-edge-hover);
 }
 
 .dark .react-flow__edge.selected {
-  stroke: #3b82f6;
+  stroke: var(--schema-edge-selected);
 }
 
 @keyframes flow {
