@@ -31,8 +31,6 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({ isOpen, onClose }) =
   const loadSchema = useSchema((state) => state.loadSchema);
   const clearSchema = useSchema((state) => state.clearSchema);
 
-  if (!isOpen) return null;
-
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {

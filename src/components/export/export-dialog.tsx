@@ -29,8 +29,6 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose }) =
 
   const exportSchema = useSchema((state) => state.exportSchema);
 
-  if (!isOpen) return null;
-
   const handleExport = () => {
     try {
       const schema = exportSchema();
