@@ -177,7 +177,16 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
         ))}
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary/95 to-primary px-3 py-2 flex items-center gap-2 group rounded-t-[calc(var(--radius)-2px)] border-b border-primary/20 relative">
+        <div
+          className="bg-gradient-to-r from-primary/95 to-primary px-3 py-2 flex items-center gap-2 group rounded-t-[calc(var(--radius)-2px)] border-b border-primary/20 relative"
+          style={
+            table.headerColor
+              ? {
+                  background: `linear-gradient(to right, ${table.headerColor}, color-mix(in srgb, ${table.headerColor} 85%, transparent))`,
+                }
+              : undefined
+          }
+        >
           <GripVertical className="h-3.5 w-3.5 text-primary-foreground/40 shrink-0 cursor-grab hover:text-primary-foreground/70 transition-colors" />
           {isEditingName ? (
             <Input
