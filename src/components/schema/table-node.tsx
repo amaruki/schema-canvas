@@ -262,19 +262,19 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
                 {/* Badges */}
                 <div className="flex items-center gap-0.5 shrink-0">
                   {column.primaryKey && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 leading-none shadow-sm shadow-amber-900/5" title="Primary Key">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 leading-none shadow-sm shadow-amber-900/5" title="Primary Key">
                       PK
                     </span>
                   )}
                   {column.foreignKey && !column.primaryKey && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 leading-none shadow-sm shadow-blue-900/5" title="Foreign Key">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 leading-none shadow-sm shadow-blue-900/5" title="Foreign Key">
                       FK
                     </span>
                   )}
                 </div>
 
                 <span className={cn(
-                  "font-medium truncate tracking-tight text-[11px]",
+                  "font-medium truncate tracking-tight text-xs",
                   column.primaryKey ? "text-foreground font-semibold" : "text-foreground/80"
                 )}>
                   {column.name}
@@ -283,18 +283,18 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
                 {/* Constraint badges */}
                 <div className="flex items-center gap-0.5 shrink-0">
                   {!column.nullable && !column.primaryKey && (
-                    <span className="inline-flex items-center justify-center px-1 py-0.5 rounded-[3px] text-[8px] font-semibold text-orange-600 dark:text-orange-400 leading-none bg-orange-100 dark:bg-orange-950/30" title="NOT NULL">
+                    <span className="inline-flex items-center justify-center px-1 py-0.5 rounded-[3px] text-[10px] font-semibold text-orange-600 dark:text-orange-400 leading-none bg-orange-100 dark:bg-orange-950/30" title="NOT NULL">
                       NN
                     </span>
                   )}
                   {column.unique && !column.primaryKey && (
-                    <span className="inline-flex items-center justify-center px-1 py-0.5 rounded-[3px] text-[8px] font-semibold text-purple-600 dark:text-purple-400 leading-none bg-purple-100 dark:bg-purple-950/30" title="Unique">
+                    <span className="inline-flex items-center justify-center px-1 py-0.5 rounded-[3px] text-[10px] font-semibold text-purple-600 dark:text-purple-400 leading-none bg-purple-100 dark:bg-purple-950/30" title="Unique">
                       UQ
                     </span>
                   )}
                 </div>
 
-                <span className="font-mono text-[10px] text-muted-foreground/70 ml-auto shrink-0 pl-3">
+                <span className="font-mono text-[11px] text-muted-foreground/70 ml-auto shrink-0 pl-3">
                   {column.type}
                   {column.defaultValue && (
                     <span className="text-primary/50 ml-0.5 font-medium">={column.defaultValue}</span>
@@ -325,14 +325,14 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
               {detailLevel === 'detailed' && (
                 <div className="mt-1 ml-1 text-muted-foreground space-y-0.5">
                   {(column.increment || (column.foreignKey && column.foreignKey.tableId)) && (
-                    <div className="text-[10px] pl-1 font-mono text-primary/70">
+                    <div className="text-[11px] pl-1 font-mono text-primary/70">
                       {column.increment && "auto_increment"}
                       {column.increment && column.foreignKey && ", "}
                       {column.foreignKey && `-> ${column.foreignKey.tableId}${column.foreignKey.columnId ? '.' + column.foreignKey.columnId.split('-')[0] : ''}`}
                     </div>
                   )}
                   {column.description && (
-                    <div className="text-[10px] pl-1 italic">
+                    <div className="text-[11px] pl-1 italic">
                       &quot;{column.description}&quot;
                     </div>
                   )}
