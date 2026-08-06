@@ -122,7 +122,9 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({ isOpen, onClose }) =
       onClose();
     } catch (error) {
       console.error('Import failed:', error);
-      toast.error('Import failed. Please check the console for details.');
+      toast.error(
+        `Import failed: ${error instanceof Error ? error.message : 'unexpected error'}`,
+      );
     } finally {
       setIsImporting(false);
     }

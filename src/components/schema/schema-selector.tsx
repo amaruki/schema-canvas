@@ -71,7 +71,9 @@ export function SchemaSelector() {
       setCreateDialogOpen(false);
       toast.success('Schema created');
     } catch (error) {
-      toast.error('Failed to create schema');
+      toast.error(
+        `Failed to create schema: ${error instanceof Error ? error.message : 'unexpected error'}`,
+      );
     }
   };
 
@@ -80,7 +82,9 @@ export function SchemaSelector() {
       await switchSchema(id);
       setOpen(false);
     } catch (error) {
-      toast.error('Failed to switch schema');
+      toast.error(
+        `Failed to switch schema: ${error instanceof Error ? error.message : 'unexpected error'}`,
+      );
     }
   };
 
@@ -90,7 +94,9 @@ export function SchemaSelector() {
       setDeleteDialogOpen(false);
       toast.success('Schema deleted');
     } catch (error) {
-      toast.error('Failed to delete schema');
+      toast.error(
+        `Failed to delete schema: ${error instanceof Error ? error.message : 'unexpected error'}`,
+      );
     }
   };
 
@@ -99,7 +105,9 @@ export function SchemaSelector() {
       await duplicateActiveSchema();
       toast.success('Schema duplicated');
     } catch (error) {
-      toast.error('Failed to duplicate schema');
+      toast.error(
+        `Failed to duplicate schema: ${error instanceof Error ? error.message : 'unexpected error'}`,
+      );
     }
   };
 
@@ -126,7 +134,9 @@ export function SchemaSelector() {
       setRenameValue('');
       toast.success('Schema renamed');
     } catch (error) {
-      toast.error('Failed to rename schema');
+      toast.error(
+        `Failed to rename schema: ${error instanceof Error ? error.message : 'unexpected error'}`,
+      );
     }
   };
 

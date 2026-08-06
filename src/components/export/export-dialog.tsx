@@ -73,7 +73,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose }) =
       onClose();
     } catch (error) {
       console.error('Export failed:', error);
-      toast.error('Export failed. Please check the console for details.');
+      toast.error(
+        `Export failed: ${error instanceof Error ? error.message : 'unexpected error'}`,
+      );
     }
   };
 

@@ -556,7 +556,7 @@ const SchemaCanvasContent: React.FC = () => {
               size="sm"
               variant="ghost"
               className="h-8 px-2.5 text-xs text-muted-foreground"
-              title="Export PostgreSQL"
+              title="Export schema (JSON, SQL, Prisma, ORM)"
             >
               <FileDown className="h-3.5 w-3.5 mr-1.5" />
               Export

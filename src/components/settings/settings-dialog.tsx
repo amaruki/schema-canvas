@@ -157,20 +157,6 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
               </p>
             </div>
 
-            {/* Future Settings Section */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-foreground">Advanced</h3>
-              <div className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg border border-border/50">
-                More settings will be available in future updates including:
-                <ul className="mt-2 space-y-1 text-xs list-inside">
-                  <li>• Export preferences</li>
-                  <li>• Canvas grid settings</li>
-                  <li>• Auto-save configuration</li>
-                  <li>• Collaboration settings</li>
-                </ul>
-              </div>
-            </div>
-
             {/* Keyboard Shortcuts */}
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-foreground">Keyboard Shortcuts</h3>
