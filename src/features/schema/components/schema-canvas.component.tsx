@@ -15,6 +15,7 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { useSchema } from "@/hooks/use-schema";
+import { toast } from "sonner";
 import { useTableOperations } from "@/features/schema/hooks/use-table-operations";
 import { useColumnOperations } from "@/features/schema/hooks/use-column-operations";
 import { useRelationshipOperations } from "@/features/schema/hooks/use-relationship-operations";
@@ -237,9 +238,9 @@ const SchemaCanvasContent: React.FC = () => {
 
   const handleSaveVersion = useCallback(() => {
     if (!activeSchemaId) return;
-    setVersionLabel("");
+    if (!isSaveVersionDialogOpen) setVersionLabel("");
     setIsSaveVersionDialogOpen(true);
-  }, [activeSchemaId]);
+  }, [activeSchemaId, isSaveVersionDialogOpen]);
 
   const handleConfirmSaveVersion = useCallback(async () => {
     if (!activeSchemaId) return;
@@ -249,6 +250,9 @@ const SchemaCanvasContent: React.FC = () => {
       setIsSaveVersionDialogOpen(false);
     } catch (error) {
       console.error("Failed to save version:", error);
+      toast.error(
+        `Failed to save version: ${error instanceof Error ? error.message : "unexpected error"}`,
+      );
     } finally {
       setIsSavingVersion(false);
     }

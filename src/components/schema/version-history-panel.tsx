@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSchema } from '@/hooks/use-schema';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
@@ -35,6 +36,11 @@ export default function VersionHistoryPanel({ onClose }: VersionHistoryPanelProp
     try {
       await restoreVersion(pendingRestoreId);
       onClose();
+    } catch (error) {
+      console.error('Failed to restore version:', error);
+      toast.error(
+        `Failed to restore version: ${error instanceof Error ? error.message : 'unexpected error'}`,
+      );
     } finally {
       setIsRestoring(false);
       setPendingRestoreId(null);
