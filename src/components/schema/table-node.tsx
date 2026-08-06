@@ -160,10 +160,9 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
   if (!table) return null;
 
   return (
-    <>
-      <Card
-        className={cn(
-          "min-w-[240px] max-w-[340px] border rounded-xl shadow-lg bg-card/95 backdrop-blur-sm overflow-visible py-0 gap-0 transition-[opacity,transform,box-shadow,filter] duration-300",
+    <>        <Card
+          className={cn(
+            "min-w-[240px] max-w-[340px] border rounded-lg shadow-lg bg-card/95 backdrop-blur-sm overflow-visible py-0 gap-0 transition-[opacity,transform,box-shadow,filter] duration-300",
           isSelected ? "border-primary/60 shadow-primary/10 ring-2 ring-primary/20" : "border-border/60 shadow-black/5 dark:shadow-black/40",
           isHighlighted ? "opacity-100 scale-[1.01] shadow-xl z-20" : "opacity-60 grayscale-[0.2] blur-[0.2px] z-10"
         )}
@@ -242,7 +241,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
                 position={Position.Left}
                 id={`${column.id}-left`}
                 className={cn(
-                  "w-2! h-2! border-[1.5px]! border-background! -left-1! z-10! ring-1 ring-transparent hover:ring-primary/50 hover:scale-125 transition-all top-[15px]! translate-y-0 opacity-0 group-hover/row:opacity-100",
+                  "w-2! h-2! border-[1.5px]! border-background! -left-1! z-10! ring-1 ring-transparent hover:ring-primary/50 hover:scale-125 transition-all top-1/2! -translate-y-1/2! opacity-0 group-hover/row:opacity-100",
                   column.primaryKey ? "bg-amber-500!" : column.foreignKey ? "bg-blue-500!" : "bg-muted-foreground/40!"
                 )}
               />
@@ -253,7 +252,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
                 position={Position.Right}
                 id={`${column.id}-right`}
                 className={cn(
-                  "w-2! h-2! border-[1.5px]! border-background! -right-1! z-10! ring-1 ring-transparent hover:ring-primary/50 hover:scale-125 transition-all top-[15px]! translate-y-0 opacity-0 group-hover/row:opacity-100",
+                  "w-2! h-2! border-[1.5px]! border-background! -right-1! z-10! ring-1 ring-transparent hover:ring-primary/50 hover:scale-125 transition-all top-1/2! -translate-y-1/2! opacity-0 group-hover/row:opacity-100",
                   column.primaryKey ? "bg-amber-500!" : column.foreignKey ? "bg-blue-500!" : "bg-muted-foreground/40!"
                 )}
               />
