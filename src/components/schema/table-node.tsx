@@ -44,6 +44,27 @@ interface TableNodeData extends Node {
   }
 }
 
+// Pick a readable header text color for a custom headerColor (hex, #rgb, or named).
+// Falls back to white when the color can't be parsed (most DBML colors are dark enough).
+function getHeaderTextColor(headerColor: string): string {
+  const hex = headerColor.trim().replace(/^#/, '');
+  let r = 0, g = 0, b = 0;
+  if (/^[0-9a-f]{6}$/i.test(hex)) {
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+  } else if (/^[0-9a-f]{3}$/i.test(hex)) {
+    r = parseInt(hex[0] + hex[0], 16);
+    g = parseInt(hex[1] + hex[1], 16);
+    b = parseInt(hex[2] + hex[2], 16);
+  } else {
+    return '#ffffff';
+  }
+  // Perceived luminance (WCAG weights)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? 'oklch(0.2 0 0)' : '#ffffff';
+}
+
 const TYPE_GROUPS = [
   {
     label: "Numeric",
@@ -182,11 +203,12 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
             table.headerColor
               ? {
                   background: `linear-gradient(to right, ${table.headerColor}, color-mix(in srgb, ${table.headerColor} 85%, transparent))`,
+                  color: getHeaderTextColor(table.headerColor),
                 }
-              : undefined
+              : { color: "var(--primary-foreground)" }
           }
         >
-          <GripVertical className="h-3.5 w-3.5 text-primary-foreground/40 shrink-0 cursor-grab hover:text-primary-foreground/70 transition-colors" />
+          <GripVertical className="h-3.5 w-3.5 text-current/40 shrink-0 cursor-grab hover:text-current/70 transition-colors" />
           {isEditingName ? (
             <Input
               value={tempName}
@@ -196,7 +218,7 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
                 if (e.key === "Enter") handleNameUpdate();
                 if (e.key === "Escape") { setIsEditingName(false); setTempName(table.name); }
               }}
-              className="h-6 text-sm font-semibold bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus-visible:ring-primary-foreground/50 flex-1 px-1.5"
+              className="h-6 text-sm font-semibold bg-current/10 border-current/20 text-current placeholder:text-current/50 focus-visible:ring-current/50 flex-1 px-1.5"
               autoFocus
             />
           ) : (
@@ -204,14 +226,14 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
               className="flex items-center gap-1.5 flex-1 cursor-pointer min-w-0"
               onClick={() => setIsEditingName(true)}
             >
-              <span className="text-sm font-semibold tracking-tight text-primary-foreground truncate">
+              <span className="text-sm font-semibold tracking-tight text-current truncate">
                 {table.name}
               </span>
-              <Edit2 className="h-3 w-3 text-primary-foreground/50 opacity-0 group-hover:opacity-100 shrink-0" />
+              <Edit2 className="h-3 w-3 text-current/50 opacity-0 group-hover:opacity-100 shrink-0" />
             </div>
           )}
-          <div className="ml-auto flex items-center justify-center bg-primary-foreground/10 px-1.5 py-0.5 rounded-full">
-            <span className="text-[10px] text-primary-foreground/85 font-medium shrink-0">
+          <div className="ml-auto flex items-center justify-center bg-current/10 px-1.5 py-0.5 rounded-full">
+            <span className="text-[10px] text-current/85 font-medium shrink-0">
               {table.columns.length} col{table.columns.length !== 1 ? 's' : ''}
             </span>
           </div>
