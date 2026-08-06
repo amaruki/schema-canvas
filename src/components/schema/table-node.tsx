@@ -302,12 +302,14 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
                 </span>
               </div>
 
-              <div className="flex items-center gap-0.5 ml-1 absolute right-2 opacity-0 group-hover/row:opacity-100 transition-opacity bg-background/80 backdrop-blur rounded shadow-sm">
+              <div className="flex items-center gap-0.5 ml-1 absolute right-2 opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100 transition-opacity bg-background/80 backdrop-blur rounded shadow-sm">
                 <Button
                   size="icon"
                   variant="ghost"
                   className="h-5 w-5 hover:bg-accent hover:text-foreground text-muted-foreground/50"
                   onClick={() => handleEditColumn(column)}
+                  aria-label={`Edit column ${column.name}`}
+                  title={`Edit column ${column.name}`}
                 >
                   <Edit2 className="h-3 w-3" />
                 </Button>
@@ -316,6 +318,8 @@ const TableNode: React.FC<NodeProps<TableNodeData>> = React.memo((props) => {
                   variant="ghost"
                   className="h-5 w-5 hover:bg-destructive/10 hover:text-destructive text-muted-foreground/50"
                   onClick={() => handleDeleteColumn(column.id)}
+                  aria-label={`Delete column ${column.name}`}
+                  title={`Delete column ${column.name}`}
                 >
                   <Trash2 className="h-3 w-3" />
                 </Button>

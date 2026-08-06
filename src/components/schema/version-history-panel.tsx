@@ -49,7 +49,7 @@ export default function VersionHistoryPanel({ onClose }: VersionHistoryPanelProp
           <History className="h-4 w-4 text-primary" />
           Version History
         </CardTitle>
-        <Button variant="ghost" size="icon" className="h-6 w-6 -mr-1" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="h-6 w-6 -mr-1" onClick={onClose} aria-label="Close version history" title="Close version history">
           <X className="h-4 w-4" />
         </Button>
       </CardHeader>
@@ -61,7 +61,7 @@ export default function VersionHistoryPanel({ onClose }: VersionHistoryPanelProp
         ) : (
           <div className="flex flex-col">
             {versions.map((ver) => (
-              <div key={ver.id} className="p-3 border-b border-border/40 flex flex-col gap-1.5 hover:bg-muted/20 transition-colors group">
+              <div key={ver.id} className="p-3 border-b border-border/40 flex flex-col gap-1.5 hover:bg-muted/20 transition-colors group focus-within:bg-muted/20">
                 <div className="flex justify-between items-start">
                   <div className="font-semibold text-sm">
                     {ver.label || `Version ${ver.versionNumber}`}
@@ -77,7 +77,7 @@ export default function VersionHistoryPanel({ onClose }: VersionHistoryPanelProp
                   onClick={() => handleRestore(ver.id)}
                   size="sm" 
                   variant="outline" 
-                  className="mt-2 h-7 w-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="mt-2 h-7 w-full text-xs opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
                 >
                   <RotateCcw className="h-3 w-3 mr-1.5" />
                   Restore
