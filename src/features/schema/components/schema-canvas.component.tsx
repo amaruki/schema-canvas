@@ -26,6 +26,16 @@ import { findOpenSlot } from "@/lib/layout/smart-placement";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
   Plus,
   RotateCcw,
   Settings,
@@ -35,6 +45,7 @@ import {
   Table2,
   FileUp,
   FileDown,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -86,6 +97,9 @@ const SchemaCanvasContent: React.FC = () => {
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
+  const [isSaveVersionDialogOpen, setIsSaveVersionDialogOpen] = useState(false);
+  const [versionLabel, setVersionLabel] = useState("");
+  const [isSavingVersion, setIsSavingVersion] = useState(false);
   const tableOps = useTableOperations();
   const columnOps = useColumnOperations();
   const relationshipOps = useRelationshipOperations();
@@ -221,13 +235,24 @@ const SchemaCanvasContent: React.FC = () => {
     tableOps.createNewTable(position);
   }, [tableOps, getNodes, getCenterPosition]);
 
-  const handleSaveVersion = useCallback(async () => {
+  const handleSaveVersion = useCallback(() => {
     if (!activeSchemaId) return;
-    const label = prompt("Enter version label (optional):");
-    if (label !== null) {
-      await saveVersion(label);
+    setVersionLabel("");
+    setIsSaveVersionDialogOpen(true);
+  }, [activeSchemaId]);
+
+  const handleConfirmSaveVersion = useCallback(async () => {
+    if (!activeSchemaId) return;
+    setIsSavingVersion(true);
+    try {
+      await saveVersion(versionLabel.trim() || undefined);
+      setIsSaveVersionDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to save version:", error);
+    } finally {
+      setIsSavingVersion(false);
     }
-  }, [activeSchemaId, saveVersion]);
+  }, [activeSchemaId, saveVersion, versionLabel]);
 
   const handleLayout = useCallback(
     (updatedTables: typeof tables) => {
@@ -557,9 +582,16 @@ const SchemaCanvasContent: React.FC = () => {
               onClick={handleSaveVersion}
               title="Save version (Ctrl+S)"
               className="h-8 px-2.5 text-xs hover:bg-primary/10 hover:text-primary"
+              disabled={isSavingVersion}
             >
-              <Save className="h-3.5 w-3.5 mr-1.5" />
-              <span className="hidden xl:inline">Save</span>
+              {isSavingVersion ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              <span className="hidden xl:inline">
+                {isSavingVersion ? "Saving" : "Save"}
+              </span>
             </Button>
 
             <div className="h-5 w-px bg-border mx-0.5" />
@@ -755,6 +787,61 @@ const SchemaCanvasContent: React.FC = () => {
           isOpen={isSettingsDialogOpen}
           onClose={closeSettingsDialog}
         />
+
+        {/* Save Version Dialog */}
+        <Dialog
+          open={isSaveVersionDialogOpen}
+          onOpenChange={setIsSaveVersionDialogOpen}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Save Version</DialogTitle>
+              <DialogDescription>
+                Create a named snapshot of the current schema. Versions can be
+                restored anytime from the History panel.
+              </DialogDescription>
+            </DialogHeader>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleConfirmSaveVersion();
+              }}
+            >
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="version-label">Version Label (optional)</Label>
+                  <Input
+                    id="version-label"
+                    value={versionLabel}
+                    onChange={(e) => setVersionLabel(e.target.value)}
+                    placeholder="e.g. v2 - user auth tables"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsSaveVersionDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSavingVersion}>
+                  {isSavingVersion ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Version"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         <TableSearch />
 
         {/* Context Menus */}

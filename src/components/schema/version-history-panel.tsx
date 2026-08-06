@@ -1,7 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSchema } from '@/hooks/use-schema';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { X, History, RotateCcw } from 'lucide-react';
 
 interface VersionHistoryPanelProps {
@@ -12,14 +22,27 @@ export default function VersionHistoryPanel({ onClose }: VersionHistoryPanelProp
   const versions = useSchema((s) => s.versions);
   const restoreVersion = useSchema((s) => s.restoreVersion);
 
-  const handleRestore = async (versionId: string) => {
-    if (confirm('Are you sure you want to restore this version? This will discard your current unsaved changes and create a new version.')) {
-      await restoreVersion(versionId);
+  const [pendingRestoreId, setPendingRestoreId] = useState<string | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleRestore = (versionId: string) => {
+    setPendingRestoreId(versionId);
+  };
+
+  const confirmRestore = async () => {
+    if (!pendingRestoreId) return;
+    setIsRestoring(true);
+    try {
+      await restoreVersion(pendingRestoreId);
       onClose();
+    } finally {
+      setIsRestoring(false);
+      setPendingRestoreId(null);
     }
   };
 
   return (
+    <>
     <Card className="absolute top-16 right-4 w-80 shadow-xl z-50 animate-in slide-in-from-right-4 border-border/60 backdrop-blur-sm bg-card/95">
       <CardHeader className="p-4 py-3 border-b border-border/40 flex flex-row items-center justify-between">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -65,5 +88,34 @@ export default function VersionHistoryPanel({ onClose }: VersionHistoryPanelProp
         )}
       </CardContent>
     </Card>
+
+    {/* Restore confirmation dialog */}
+    <AlertDialog
+      open={pendingRestoreId !== null}
+      onOpenChange={(open) => {
+        if (!open) setPendingRestoreId(null);
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Restore Version</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to restore this version? This will discard
+            your current unsaved changes and create a new version.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isRestoring}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={confirmRestore}
+            disabled={isRestoring}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {isRestoring ? 'Restoring...' : 'Restore'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
