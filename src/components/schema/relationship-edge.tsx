@@ -42,7 +42,7 @@ export const RELATIONSHIP_TYPES = {
   'many-to-many': {
     label: 'N:N',
     color: '#f59e0b', // amber-500
-    strokeWidth: 2.5,
+    strokeWidth: 3,
     strokeDasharray: '5,5',
     markerSize: MARKER_SIZE,
   },
@@ -62,7 +62,7 @@ export const RELATIONSHIP_TYPES = {
   },
   'zero-to-many': {
     label: '0:N',
-    color: '#06b6d4', // cyan-500
+    color: '#0891b2', // cyan-600, better contrast on light bg
     strokeWidth: 2,
     strokeDasharray: '3,3',
     markerSize: MARKER_SIZE,
@@ -166,13 +166,15 @@ const RelationshipEdge: React.FC<RelationshipEdgeProps> = React.memo(({
         />
       )}
 
-      {/* Edge label */}
+      {/* Edge label - dims with the edge, pops on hover/select */}
       <EdgeLabelRenderer>
         <div
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: 'all',
+            opacity: isHighlighted || selected ? 1 : 0.25,
+            transition: 'opacity 0.3s ease',
           }}
           className="nodrag nopan"
         >
