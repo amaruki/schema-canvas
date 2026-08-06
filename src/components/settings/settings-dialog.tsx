@@ -1,8 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Settings, Sun, Moon, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
@@ -14,95 +20,38 @@ interface SettingsDialogProps {
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Avoid hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Avoid hydration mismatch: true on client, false during SSR
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
     setTheme(newTheme);
   };
 
-  // Close on Escape key
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  // Prevent theme flicker during SSR
-  if (!mounted) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-        <div className="relative z-10 w-full max-w-md mx-4">
-          <Card className="bg-card border-border shadow-2xl">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                  <Settings className="h-5 w-5" />
-                  Settings
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onClose}
-                  className="h-8 w-8 p-0 hover:bg-muted"
-                >
-                  ×
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="animate-pulse space-y-4">
-                <div className="h-20 bg-muted rounded" />
-                <div className="h-32 bg-muted rounded" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/20"
-        onClick={onClose}
-      />
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Settings className="h-5 w-5 text-primary" />
+            Settings
+          </DialogTitle>
+          <DialogDescription>
+            Workspace preferences
+          </DialogDescription>
+        </DialogHeader>
 
-      {/* Dialog */}
-      <div className="relative z-10 w-full max-w-md mx-4">
-        <Card className="bg-card border border-border shadow-lg">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                <Settings className="h-5 w-5 text-primary" />
-                Settings
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="h-8 w-8 p-0 hover:bg-muted rounded-full"
-              >
-                <span className="text-2xl leading-none text-muted-foreground hover:text-foreground">×</span>
-              </Button>
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-6">
+        {/* Prevent theme flicker during SSR */}
+        {!mounted ? (
+          <div className="animate-pulse space-y-4 py-4">
+            <div className="h-20 bg-muted rounded" />
+            <div className="h-32 bg-muted rounded" />
+          </div>
+        ) : (
+          <div className="space-y-6 py-2">
             {/* Theme Settings */}
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-foreground">Color Scheme</h3>
@@ -181,10 +130,10 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };
 

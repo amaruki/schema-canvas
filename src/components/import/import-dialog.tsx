@@ -3,11 +3,16 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { toast } from "sonner"
 import { useSchema } from '@/hooks/use-schema';
 import { parseDjangoModels, validateDjangoModels } from '@/lib/import/django-importer';
 import type { LayoutOptions } from '@/lib/layout/types';
-import { Upload, X, FileText, AlertCircle, CheckCircle, Settings, ChevronDown } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle, Settings } from 'lucide-react';
 
 interface ImportDialogProps {
   isOpen: boolean;
@@ -188,20 +193,14 @@ class PostWithM2M(models.Model):
   ];
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-      <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+        <Card className="w-full border-0 shadow-none">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Import Schema</CardTitle>
-              <CardDescription>
-                Import your database schema from existing files
-              </CardDescription>
-            </div>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <CardTitle>Import Schema</CardTitle>
+          <CardDescription>
+            Import your database schema from existing files
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -367,7 +366,7 @@ class PostWithM2M(models.Model):
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-4">
+          <DialogFooter className="flex gap-3 pt-4 sm:justify-start">
             <Button variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>
@@ -379,10 +378,11 @@ class PostWithM2M(models.Model):
               <Upload className="h-4 w-4 mr-2" />
               {isImporting ? 'Importing...' : 'Import Schema'}
             </Button>
-          </div>
+          </DialogFooter>
         </CardContent>
-      </Card>
-    </div>
+        </Card>
+      </DialogContent>
+    </Dialog>
   );
 };
 

@@ -3,12 +3,17 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from "sonner"
 import { useSchema } from '@/hooks/use-schema';
 import { ExportManager } from '@/lib/export/export-manager';
 import { ExportOptions, SQLDialect } from '@/types/schema';
-import { Download, X, FileJson, Database, Code } from 'lucide-react';
+import { Download, FileJson, Database, Code } from 'lucide-react';
 
 interface ExportDialogProps {
   isOpen: boolean;
@@ -126,20 +131,14 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose }) =
   ];
 
   return (
-    <div className="fixed inset-0 bg-background flex items-center justify-center z-50">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+        <Card className="w-full border-0 shadow-none">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Export Schema</CardTitle>
-              <CardDescription>
-                Choose export format and options for your database schema
-              </CardDescription>
-            </div>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <CardTitle>Export Schema</CardTitle>
+          <CardDescription>
+            Choose export format and options for your database schema
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -227,7 +226,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose }) =
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-4">
+          <DialogFooter className="flex gap-3 pt-4 sm:justify-start">
             <Button variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>
@@ -235,10 +234,11 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose }) =
               <Download className="h-4 w-4 mr-2" />
               Export Schema
             </Button>
-          </div>
+          </DialogFooter>
         </CardContent>
-      </Card>
-    </div>
+        </Card>
+      </DialogContent>
+    </Dialog>
   );
 };
 
